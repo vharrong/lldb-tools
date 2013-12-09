@@ -102,6 +102,68 @@ function git_pull () {
     return $retval
 }
 
+# args:
+#   $1: directory in which to run the 'git clone'
+#   $2: the git remote path to clone
+#
+# Will leave the cwd untouched on exit
+
+function git_clone () {
+    local retval
+
+    if [ -z "$1" -o -z "$2" ]; then
+        echo "usage: git_clone {cwd-for-clone-op} {repo-to-clone}"
+        return 1
+    fi
+
+    local command_dir=$1
+    local remote_repo=$2
+
+    # do the git clone
+    pushd . >/dev/null
+    cd $command_dir
+    retval=$?
+    if [ $retval -ne 0 ]; then
+        echo "git_clone: cannot change directory to $command_dir"
+        return $retval
+    fi
+
+    echo "Executing 'git clone $remote_repo' with cwd $command_dir"
+    git clone $remote_repo
+    retval=$?
+    popd >/dev/null
+
+    # indicate result
+    return $retval
+}
+
+# Do a git clone on the Google-internal lldb/llvm, lldb/clang and
+# lldb/lldb directories.  Place them in LLVM standard order:
+#
+# lldb/llvm  => ./llvm
+# lldb/clang => ./llvm/tools/clang
+# lldb/lldb  => ./llvm/tools/lldb
+
+function clone_lldb_all () {
+    if ! git_clone '.' 'sso://team/lldb/llvm' ; then
+        echo "failed to clone llvm"
+        return 1
+    fi
+
+    if ! git_clone 'llvm/tools' 'sso://team/lldb/clang' ; then
+        echo "failed to clone clang"
+        return 1
+    fi
+
+    if ! git_clone 'llvm/tools' 'sso://team/lldb/lldb' ; then
+        echo "failed to clone lldb"
+        return 1
+    fi
+}
+
+# Do a 'git pull origin' from the llvm root directory. Assumes llvm's
+# root git directory lies somewhere within the parent directory chain.
+
 function pull_llvm () {
     local llvm_parent_dir
     find_dir_parent_chain "llvm_parent_dir" "llvm/.git"
@@ -119,6 +181,10 @@ function pull_llvm () {
     # indicate result
     return $retval
 }
+
+# Do a 'git pull origin' from the clang root directory. Assumes the
+# current working directory is somewhere under the llvm (although not
+# necessarily clang) parent directory chain.
 
 function pull_clang () {
     local llvm_parent_dir
@@ -145,6 +211,9 @@ function pull_clang () {
 # - change back to the previous branch
 # - rebase the master onto the working branch
 # - apply the latest stash
+#
+# Assumes the user is somewhere underneath the llvm (although
+# not necessarily lldb) directory tree.
 
 function pull_lldb_rebase () {
     local retval
@@ -165,9 +234,9 @@ function pull_lldb_rebase () {
         return $retval
     fi
     # echo "llvm/tools/lldb/.git found in $llvm_parent_dir"
-    
+
     local lldb_dir="$llvm_parent_dir/llvm/tools/lldb"
-    
+
     # change into lldb_dir
     pushd . >/dev/null
     cd $lldb_dir
@@ -181,16 +250,17 @@ function pull_lldb_rebase () {
     local stash_result=$(git status -s)
     if [ -n "$stash_result" ]; then
         # Stash the changes.
-        # 
+        #
         # Add anything that is unknown.  We do this in case we're
         # adding something that was also added upstream. This will
         # help understand the merge conflict more readily.
-        local unknown_wd_files=$(echo "$stash_result" | grep '^??' | awk ' { print $2 } ')
+        local unknown_wd_files=$(echo "$stash_result" | grep '^??' | \
+            awk ' { print $2 } ')
         if [ -n "$unknown_wd_files" ]; then
             echo "$unknown_wd_files" | xargs git add
             retval=$?
             if [ $retval -ne 0 ]; then
-                echo "failed to add changes from working directory to the git repo: $retval"
+                echo "failed to add local changes to the git repo: $retval"
                 popd >/dev/null
                 return $retval
             fi
@@ -242,7 +312,6 @@ function pull_lldb_rebase () {
             echo "failed to rebase $pull_local_branch onto $old_branch: $retval"
             overall_retval=1
         else
-            
             # reapply the stash
             if [ -n "$stash_result" ]; then
                 git stash pop
