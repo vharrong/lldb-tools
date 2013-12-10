@@ -331,6 +331,40 @@ function pull_lldb_rebase () {
     return $overall_retval
 }
 
+# make_lldb_tags [tags-path, default: LLVM-PARENT:TAGS]
+function make_lldb_tags () {
+    # find llvm root dir
+    local llvm_parent_dir
+    find_dir_parent_chain "llvm_parent_dir" "llvm/.git"
+    local retval=$?
+    if [ "$retval" -ne 0 ]; then
+        echo "llvm/.git not found within $(pwd)"
+        return $retval
+    fi
+    echo "Found llvm parent dir: $llvm_parent_dir"
+
+    # figure out tags path name
+    local tags_path
+    if [ -n "$1" ]; then
+	tags_path=$1
+    else
+	tags_path="$llvm_parent_dir/TAGS"
+    fi
+    echo "Writing tags file to: $tags_path"
+
+    # run ctags on .h/.cpp files in llvm tree and
+    # .h files in /usr/include
+    { find /usr/include -name '*.h' -exec echo '"{}"' \; ; \
+	find "$llvm_parent_dir/llvm" -name '*.h' -o -name '*cpp' -exec echo '"{}"' \; ; \
+    } | xargs ctags -e --c++-kinds=+p --fields=+iaS --extra=+q \
+	--language-force=C++ -f $tags_path
+    local retval=$?
+    if [ $retval -ne 0 ]; then
+	echo "failed to generate tags file"
+    fi
+    return $retval
+}
+
 function cfglldb () {
     local INSTALL_DIR
     if [ -n "$1" ]; then
