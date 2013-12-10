@@ -220,9 +220,6 @@ function pull_lldb_rebase () {
     local overall_retval=0
     local pull_remote='origin'
     local pull_local_branch='master'
-    # assume the local branch is tracking upstream, and a 'git pull
-    # $pull_remote' is sufficient.
-    # local pull_branch_spec="master:$pull_local_branch"
     local pull_branch_spec=''
 
     # find lldb directory
@@ -291,7 +288,7 @@ function pull_lldb_rebase () {
         overall_retval=1
     else
         # do the pull
-        git pull "$pull_remote" "$pull_branch_spec"
+        git pull $pull_remote $pull_branch_spec
         if [ $retval -ne 0 ]; then
             echo "git pull "$pull_remote" "$pull_branch_spec" failed: $retval"
             overall_retval=1
