@@ -362,15 +362,95 @@ function make_lldb_tags () {
     return $retval
 }
 
-function cfglldb () {
-    local INSTALL_DIR
+# usage: configure_lldb [INSTALL_DIR]
+#   INSTALL_DIR defaults to 'install'.
+#
+# Runs ../llvm/configure with --prefix=`pwd`/../INSTALL_DIR.
+# i.e. assumes it is being run at the top level of a build
+# directory, which is assumed to be a sibling of the
+# llvm code directory.
+#
+# This script now checks to make sure that the system does
+# not have a clang defined in the path.  Currently this will
+# break our build on Goobuntu 12.04, where we assume we
+# build with gcc 4.8+.
+
+function configure_lldb () {
+    # determine build directory
+    local BUILD_DIR
     if [ -n "$1" ]; then
-        INSTALL_DIR=$1
+        BUILD_DIR=$1
+    else
+        BUILD_DIR=build
+    fi
+    echo Using build dir: $BUILD_DIR
+
+    # setup the configure prefix dir
+    local INSTALL_DIR
+    if [ -n "$2" ]; then
+        INSTALL_DIR=$2
     else
         INSTALL_DIR=install
     fi
     echo Using install dir $INSTALL_DIR
-    ../llvm/configure --enable-cxx11 --prefix=`pwd`/../$INSTALL_DIR
+
+    # fail if there is a clang in the path
+    if [ -n "$(which clang)" ]; then
+        echo "clang found in path: $(which clang)"
+        echo "Our lldb build setup does not support building with clang."
+        echo "Please remove clang from your path."
+        return 1
+    fi
+
+    # find the parent of the llvm directory
+    local llvm_parent_dir
+    find_dir_parent_chain "llvm_parent_dir" "llvm/.git"
+    local retval=$?
+    if [ "$retval" -ne 0 ]; then
+        echo "llvm/.git not found within $(pwd)"
+        return $retval
+    fi
+    echo "Found llvm parent dir: $llvm_parent_dir"
+
+    # fail if the build directory already exists
+    if [ -e "$llvm_parent_dir/$BUILD_DIR" ]; then
+        echo "build dir already exists - please delete before running"
+        return 1
+    fi
+
+    # fail if the install directory already exists
+    if [ -e "$llvm_parent_dir/$INSTALL_DIR" ]; then
+        echo "install dir already exists - please delete before running"
+        return 1
+    fi
+
+    # make the build dir
+    if ! mkdir $llvm_parent_dir/$BUILD_DIR ; then
+        echo "failed to make build dir: $llvm_parent_dir/$BUILD_DIR"
+        return 1
+    fi
+
+    # remember current dir
+    pushd . >/dev/null
+
+    local retval=0
+
+    if cd $llvm_parent_dir/$BUILD_DIR ; then
+        # run the configure command
+        ../llvm/configure --enable-cxx11 --prefix=`pwd`/../$INSTALL_DIR
+        if [ $? -ne 0 ]; then
+            echo "configure failed"
+            retval=1
+        fi
+    else
+        echo "failed to cd into $llvm_parent_dir/$BUILD_DIR"
+        retval=1
+    fi
+
+    # restore directory
+    popd >/dev/null
+
+    return $retval
 }
 
 function mklog () {
