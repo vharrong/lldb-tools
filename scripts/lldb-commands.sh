@@ -1,4 +1,5 @@
 # commands to be sourced into shell startup for lldb dev commands
+# copyright 2013, Google, Inc.
 
 # reload lldb scripts
 function reload_lldb_commands () {
