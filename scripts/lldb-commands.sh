@@ -205,12 +205,17 @@ function pull_clang () {
     return $retval
 }
 
+# usage: pull_lldb_rebase [-a|--pull-all] [-r {remote} | --remote
+# {remote}] [ -b {local-mirror-branch} | --branch
+# {local-mirror-branch} ]
+# 
 # This command will:
-# - stash if any changes exist on the branch
-# - change to the master branch
-# - pull the remote origin onto master
+# - stash if any changes exist on the current branch
+# - change to the local-mirror-branch branch
+# - pull the remote origin (assumed to be the default remote for the
+# local-mirror-branch branch)
 # - change back to the previous branch
-# - rebase the master onto the working branch
+# - rebase the local-mirror-branch onto the working branch
 # - apply the latest stash
 #
 # Assumes the user is somewhere underneath the llvm (although
@@ -222,6 +227,60 @@ function pull_lldb_rebase () {
     local pull_remote='origin'
     local pull_local_branch='master'
     local pull_branch_spec=''
+    local pull_related_branches=no
+
+    # parse args
+    while [ $# -gt 0 ]; do
+        case $1 in
+            # handle remote repo name
+            --remote | -r )
+                if [ -z "$2" ]; then
+                    echo "$1 requires remote repo name argument"
+                    return 1
+                fi
+                shift
+                pull_remote=$1
+                ;;
+
+            # handle name of the local branch to use
+            --branch | -b )
+                if [ -z "$2" ]; then
+                    echo "$1 requires local branch name argument"
+                    return 1
+                fi
+                shift
+                pull_local_branch=$1
+                ;;
+
+            # handle request to pull everything
+            --pull-all | -a )
+                pull_related_branches="yes"
+                ;;
+
+            -*)
+                echo "Unrecognized option: $1"
+                return 1
+                ;;
+
+            # First command line arg not matching above skips option
+            # processing.
+            *)
+                break
+                ;;
+        esac
+        shift
+    done
+
+    # pull related branches if requested
+    if [ "$pull_related_branches" = "yes" ]; then
+        for pull_cmd in pull_llvm pull_clang ; do
+            $pull_cmd
+            if [ $? -ne 0 ]; then
+                 echo "Failed to pull with $pull_cmd"
+                 return 1
+            fi
+        done
+    fi
 
     # find lldb directory
     local llvm_parent_dir
