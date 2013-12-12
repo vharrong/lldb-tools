@@ -11,11 +11,27 @@ package build_tables;
 #   perl build_tables.py {raw-registers-output-file} \
 #     {path-to-ARM_DWARF_Registers.h}
 #
+# Any register aliases should be declared in the hash table at
+# the top of the file.  Missing aliases will be flagged.
+#
 # Authors: Todd Fiala (tfiala@)
+#          Steve Pucci (spucci@)
 
 use warnings;
 use strict;
 use Carp;
+use POSIX;
+
+# Register aliases declarations.
+# The keys are the prefixes for (cooked) registers which are aliased to some other registers.
+# The values are the prefixes for the equivalent register sets.
+my %register_aliases = (
+    "q" => "d",
+    "s" => "d"
+);
+
+# Sizes (in bytes) of registers with given prefix, determined as part of the first pass
+my %register_sizes_by_prefix;
 
 sub parse_raw_registers_output {
     my ($raw_filename) = @_;
@@ -33,13 +49,36 @@ sub parse_raw_registers_output {
         } elsif (m/^\s*''/) {
             # skip non-registers
         } else {
-            m/^\s*(\S+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)/ or croak "Failed to match register line format: $_";
+            m/^\s*(\S+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)(\s+(\S+))?/ or croak "Failed to match register line format: $_";
             my $reg_name = $1;
             my $gdb_reg_num = $2;
             my $rel_index = $3; # not sure precisely what this is
                              # TODO look up
             my $byte_offset = $4;
             my $byte_size = $5;
+            my $raw_value = $8;
+
+            my $prefix;  # e.g., "q"
+            my $index;   # e.g., "15"
+            if ($reg_name =~ /^([a-z]+)(\d+)$/) {
+                $prefix = $1;
+                $index = $2;
+                my $existing_size = $register_sizes_by_prefix{$prefix};
+                if (defined $existing_size) {
+                    $existing_size == $byte_size
+                        or croak "Registers with same prefix ($prefix) have different sizes " .
+                                 "($existing_size and $byte_size (for $reg_name))";
+                } else {
+                    $register_sizes_by_prefix{$prefix} = $byte_size;
+                }
+            }
+
+            if ((defined $raw_value) && ($raw_value eq "<cooked>")) {
+                defined $prefix
+                    or croak "Cooked value register with unexpected name pattern (expected letter(s)+number): $reg_name";
+                defined ($register_aliases{$prefix})
+                    or croak "Cooked value register with prefix '$prefix' has no alias definition\n";
+            }
 
             # determine register set - right now using rollover of gdb
             # maintenance Rel field to do this, might be totally wrong.
@@ -79,7 +118,9 @@ sub parse_raw_registers_output {
                 byte_size => $byte_size,
                 format => $reg_format,
                 encoding => $reg_encoding,
-                alt_name => $alt_name
+                alt_name => $alt_name,
+                prefix => $prefix,
+                index => $index
             }
         }
     }
@@ -140,26 +181,87 @@ sub print_reg_infos {
     foreach my $reg_name (sort { $reg_infos_ref->{$a}{byte_offset} <=> 
                                 $reg_infos_ref->{$b}{byte_offset} } 
                      keys %$reg_infos_ref) {
+        my $is_aliased = 0;
         my $reg_info_ref = $reg_infos_ref->{$reg_name};
-        printf("{ 'name':%-7s, 'set':%d, 'bitsize':%3d, 'offset':%3d, 'encoding':%s, 'format':%s",
+#       printf("{ 'name':%-7s, 'set':%d, 'bitsize':%3d, 'offset':%3d, 'encoding':%s, 'format':%s",
+        printf("{ 'name':%-7s, 'set':%d, 'bitsize':%3d, 'encoding':%s, 'format':%s",
                "'" . $reg_info_ref->{name} . "'",
                $reg_info_ref->{set},
                $reg_info_ref->{byte_size} * 8,
-               $reg_info_ref->{byte_offset},
+#               $reg_info_ref->{byte_offset},
                $reg_info_ref->{encoding},
                $reg_info_ref->{format});
 
         if ($reg_info_ref->{alt_name}) {
-            printf(", 'alt-name':'%s' },\n", $reg_info_ref->{alt_name});
-        } else {
-            printf(" },\n");
+            printf(", 'alt-name':'%s'", $reg_info_ref->{alt_name});
         }
 
-        my $next_offset = $reg_info_ref->{byte_offset} +
-            $reg_info_ref->{byte_size};
-        if ($next_offset > $packet_size) {
-            $packet_size = $next_offset;
+        my $prefix = $reg_info_ref->{prefix};
+        if (defined $prefix) {
+            my $aliasee = $register_aliases{$prefix};
+            if (defined $aliasee) {
+                $is_aliased = 1;
+                my $aliasee_size = $register_sizes_by_prefix{$aliasee};
+                defined $aliasee_size
+                    or croak "No size defined for prefix '$aliasee', the aliasee for prefix '$prefix', " .
+                             "implying no definition for any such '$aliasee' register appeared\n ";
+                my $my_size = $reg_info_ref->{byte_size};
+                my $my_size_in_bits = $my_size * 8;
+                my $my_index = $reg_info_ref->{index};
+                if ($my_size == $aliasee_size) {  # The easy case
+                    croak "This script can't (yet) handle equal size register aliases (e.g., '$prefix' => '$aliasee');"
+                            #   Presumably either a trivial slice or a trivial composite definition would work.
+                } elsif ($my_size < $aliasee_size) {  # I'm smaller, so I'm a slice of the other register
+                    # s3 => d1
+                    # 'slice' : 'd1[15:8]'
+                    my $size_factor = sprintf("%d", $aliasee_size / $my_size);  # Round.  e.g., 2
+                    $my_size * $size_factor == $aliasee_size
+                        or croak "Register alias ('$prefix' => '$aliasee') isn't an integer multiple.";
+
+                    # Calculate which register is to be aliased
+                    my $aliasee_index = POSIX::floor($my_index / $size_factor);
+                            # e.g., 3 -> 1  N.B.: Depends on byte ordering in register context buffer
+                    
+                    # Calculate offset within that register:
+                    # First determine the "remainder" from the previous calculation.  This will
+                    #   return the offset in units of my register size:
+                    my $aliasee_slice_offset = $my_index - ($size_factor * $aliasee_index);
+                    my $aliasee_slice_offset_bits = $aliasee_slice_offset * $my_size * 8;
+                    printf(", 'slice' : '%s%d[%d:%d]'",
+                           $aliasee,
+                           $aliasee_index,
+                           $aliasee_slice_offset_bits + $my_size_in_bits - 1,
+                           $aliasee_slice_offset_bits);
+                } else {  # I'm bigger, so I'm the composite of multiple other registers
+                    # q1 => d2, d3
+                    # q2 => d4, d5
+                    # 'composite' : [ d2, d3 ]
+                    my $size_factor = sprintf("%d", $my_size / $aliasee_size);  # Round.  e.g., 2
+                    $aliasee_size * $size_factor == $my_size
+                        or croak "Register alias ('$prefix' => '$aliasee') isn't an integer multiple.";
+                    my $first_aliasee_index = $my_index * $size_factor;
+                    printf(", 'composite' : [ ");
+                    for (my $i = $size_factor - 1; $i >= 0; $i--) {  # NB This ordering should be MSB->LSB
+                        if ($i != $size_factor - 1) {
+                            printf(", ");
+                        }
+                        printf("$aliasee%d", $i + $first_aliasee_index);
+                    }
+                    printf(" ]");
+                }
+            }
         }
+
+        if (! $is_aliased) {
+            my $next_offset = $reg_info_ref->{byte_offset} +
+                $reg_info_ref->{byte_size};
+            if ($next_offset > $packet_size) {
+                $packet_size = $next_offset;
+            }
+        }
+
+        printf(" },\n");
+
     }
 
     print "];\n\n";
