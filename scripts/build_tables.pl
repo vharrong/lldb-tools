@@ -1,3 +1,4 @@
+#!/usr/bin/env perl
 package build_tables;
 
 # Generates register name to gdb register numbers from gdbserver
