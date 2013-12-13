@@ -38,9 +38,9 @@ sub parse_raw_registers_output {
     my %gdb_reg_num;
     my %gdb_reg_infos;
 
-    open my ($fh), '<', $raw_filename or 
+    open my ($fh), '<', $raw_filename or
         croak "Failed to open file $raw_filename for reading: $?";
-    
+
     while (<$fh>) {
         if (m/^\s*#/) {
             # skip comments
@@ -178,8 +178,8 @@ sub print_reg_infos {
     my $packet_size = 0;
 
     print "arm_register_infos = [\n";
-    foreach my $reg_name (sort { $reg_infos_ref->{$a}{byte_offset} <=> 
-                                $reg_infos_ref->{$b}{byte_offset} } 
+    foreach my $reg_name (sort { $reg_infos_ref->{$a}{byte_offset} <=>
+                                $reg_infos_ref->{$b}{byte_offset} }
                      keys %$reg_infos_ref) {
         my $is_aliased = 0;
         my $reg_info_ref = $reg_infos_ref->{$reg_name};
@@ -221,7 +221,7 @@ sub print_reg_infos {
                     # Calculate which register is to be aliased
                     my $aliasee_index = POSIX::floor($my_index / $size_factor);
                             # e.g., 3 -> 1  N.B.: Depends on byte ordering in register context buffer
-                    
+
                     # Calculate offset within that register:
                     # First determine the "remainder" from the previous calculation.  This will
                     #   return the offset in units of my register size:
