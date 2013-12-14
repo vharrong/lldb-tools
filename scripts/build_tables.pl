@@ -236,7 +236,7 @@ sub print_reg_infos {
                 } else {  # I'm bigger, so I'm the composite of multiple other registers
                     # q1 => d2, d3
                     # q2 => d4, d5
-                    # 'composite' : [ d2, d3 ]
+                    # 'composite' : [ 'd2', 'd3' ]
                     my $size_factor = sprintf("%d", $my_size / $aliasee_size);  # Round.  e.g., 2
                     $aliasee_size * $size_factor == $my_size
                         or croak "Register alias ('$prefix' => '$aliasee') isn't an integer multiple.";
@@ -246,7 +246,7 @@ sub print_reg_infos {
                         if ($i != $size_factor - 1) {
                             printf(", ");
                         }
-                        printf("$aliasee%d", $i + $first_aliasee_index);
+                        printf("'$aliasee%d'", $i + $first_aliasee_index);
                     }
                     printf(" ]");
                 }
