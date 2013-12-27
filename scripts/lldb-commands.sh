@@ -513,10 +513,8 @@ function configure_lldb () {
     return $retval
 }
 
-function mklog () {
-    make $@ 2>&1 | tee make.log
-}
-
 function mkilog () {
     make $@ install 2>&1 | tee make_install.log
 }
+
+alias mklog lldb-mklog.py
