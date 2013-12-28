@@ -422,5 +422,5 @@ function make_lldb_tags () {
     return $retval
 }
 
-alias mklog lldb-mklog.py
-alias mkilog lldb-mkilog.py
+alias mklog=lldb_mklog.py
+alias mkilog=lldb_mkilog.py
