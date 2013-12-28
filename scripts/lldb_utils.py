@@ -1,12 +1,31 @@
-"""Utility methods for building and maintaining lldb."""
+"""Utility methods for building and maintaining lldb.
+
+FindParentInParentChain -- Find a directory in the parent chain.
+FindLLVMParentInParentChain -- Find 'llvm' in the parent chain.
+FindInExecutablePath -- Find a program in the executable path.
+PrintRemoveTreeCommandForPath -- print a command to remove a path.
+GitClone -- Call 'git clone' in a given directory.
+
+"""
 
 
 import os
+import subprocess
 
 
-# Find the closet path with the given name in the parent directory hierarchy.
-# 'item' must be relative path, and may contain a directory path (a/b/c)
 def FindParentInParentChain(item):
+  """Find the closet path with the given name in the parent directory hierarchy.
+
+  Args:
+    item: relative path to be found (may contain a directory path (a/b/c)).
+
+  Returns:
+    The full path of found directory, or None if no such path was found.
+
+  Raises:
+    ValueError:  if given an absolute path.
+
+  """
   if item.startswith("/"):
     raise ValueError("FindParentInParentChain takes relative path")
   # TODO(spucci): (maybe) add a check for Windows absolute paths as above
@@ -23,14 +42,21 @@ def FindParentInParentChain(item):
       return None
 
 
-# Find the llvm tree above us or at the same level
 def FindLLVMParentInParentChain():
+  """Find the llvm tree above us or at the same level."""
   return FindParentInParentChain(os.path.join("llvm", ".git"))
 
 
-# Find the given program in the executable path.
-# Returns the full pathname or None if not in path.
 def FindInExecutablePath(prog):
+  """Find the given program in the executable path.
+
+  Args:
+    prog: The program to find.
+
+  Returns:
+    The full pathname or None if prog not in path.
+
+  """
   user_path = os.environ["PATH"]       # TODO(spucci) fix? on Windows...
   for pathdir in user_path.split(os.pathsep):
     pathdir = pathdir.rstrip("/")
@@ -41,8 +67,52 @@ def FindInExecutablePath(prog):
   return None
 
 
-# Print the command to remove the given path.
-# Useful for cut-and-paste from error message.
 def PrintRemoveTreeCommandForPath(path):
+  """Print the command to remove the given path.
+
+  Useful for cut-and-paste from error message.
+
+  Args:
+    path: The root of the tree to remove.
+
+  """
   print "You can remove this path with:"
   print "rm -rf " + path    # TODO(spucci): Fix Windows
+
+
+def GitClone(in_dir, remote_path):
+  """Run "git clone" in a given directory.
+
+  Will leave the cwd untouched on exit.
+
+  Args:
+    in_dir: (local) directory in which to run the 'git clone'
+    remote_path: the git remote path to clone
+
+  Returns:
+    The 'git' command status.
+
+  Raises:
+    TypeError: if there are missing arguments
+
+  """
+
+  if not remote_path:
+    raise TypeError("GitClone requires (local) directory and remote path")
+
+  # Go to directory, saving old path
+  save_wd = os.getcwd()
+  print "cd " + in_dir
+  os.chdir(in_dir)
+
+  command_tokens = ("git", "clone", remote_path)
+  print " ".join(command_tokens)
+  status = subprocess.call(command_tokens)
+  if status != 0:
+    print "git command failed (see above)."
+    exit(1)
+
+  print "cd " + save_wd
+  os.chdir(save_wd)
+
+  return status

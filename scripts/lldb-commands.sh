@@ -103,65 +103,6 @@ function git_pull () {
     return $retval
 }
 
-# args:
-#   $1: directory in which to run the 'git clone'
-#   $2: the git remote path to clone
-#
-# Will leave the cwd untouched on exit
-
-function git_clone () {
-    local retval
-
-    if [ -z "$1" -o -z "$2" ]; then
-        echo "usage: git_clone {cwd-for-clone-op} {repo-to-clone}"
-        return 1
-    fi
-
-    local command_dir=$1
-    local remote_repo=$2
-
-    # do the git clone
-    pushd . >/dev/null
-    cd $command_dir
-    retval=$?
-    if [ $retval -ne 0 ]; then
-        echo "git_clone: cannot change directory to $command_dir"
-        return $retval
-    fi
-
-    echo "Executing 'git clone $remote_repo' with cwd $command_dir"
-    git clone $remote_repo
-    retval=$?
-    popd >/dev/null
-
-    # indicate result
-    return $retval
-}
-
-# Do a git clone on the Google-internal lldb/llvm, lldb/clang and
-# lldb/lldb directories.  Place them in LLVM standard order:
-#
-# lldb/llvm  => ./llvm
-# lldb/clang => ./llvm/tools/clang
-# lldb/lldb  => ./llvm/tools/lldb
-
-function clone_lldb_all () {
-    if ! git_clone '.' 'sso://team/lldb/llvm' ; then
-        echo "failed to clone llvm"
-        return 1
-    fi
-
-    if ! git_clone 'llvm/tools' 'sso://team/lldb/clang' ; then
-        echo "failed to clone clang"
-        return 1
-    fi
-
-    if ! git_clone 'llvm/tools' 'sso://team/lldb/lldb' ; then
-        echo "failed to clone lldb"
-        return 1
-    fi
-}
-
 # Do a 'git pull origin' from the llvm root directory. Assumes llvm's
 # root git directory lies somewhere within the parent directory chain.
 
