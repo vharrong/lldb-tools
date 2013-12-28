@@ -110,7 +110,44 @@ def GitClone(in_dir, remote_path):
   status = subprocess.call(command_tokens)
   if status != 0:
     print "git command failed (see above)."
-    exit(1)
+
+  print "cd " + save_wd
+  os.chdir(save_wd)
+
+  return status
+
+
+def GitPull(in_dir, remote="origin", branch_mapping="master:master"):
+  """Run "git pull" in a given directory.
+
+  Will leave the cwd untouched on exit.
+
+  Args:
+    in_dir: the (local) directory in which to run the 'git ull'
+    remote: (optional) the remote to pull from (defaults to: "origin")
+    branch_mapping: (optional) branch mapping (defaults to: "master:master")
+
+  Returns:
+    The 'git' command status.
+
+  Raises:
+    TypeError: if there are missing arguments
+
+  """
+
+  if not in_dir:
+    raise TypeError("GitPull requires (local) directory")
+
+  # Go to directory, saving old path
+  save_wd = os.getcwd()
+  print "cd " + in_dir
+  os.chdir(in_dir)
+
+  command_tokens = ("git", "pull", remote, branch_mapping)
+  print " ".join(command_tokens)
+  status = subprocess.call(command_tokens)
+  if status != 0:
+    print "git command failed (see above)."
 
   print "cd " + save_wd
   os.chdir(save_wd)
