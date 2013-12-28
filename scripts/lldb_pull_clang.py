@@ -13,11 +13,12 @@ import lldb_utils
 
 
 def main():
-  llvm_parent_dir = lldb_utils.FindParentInParentChain("llvm/tools/clang/.git")
+  llvm_parent_dir = lldb_utils.FindParentInParentChain(
+      os.path.join("llvm", "tools", "clang", ".git"))
   if not llvm_parent_dir:
     raise ValueError("Not in (or adjacent to) an llvm tree")
 
-  if lldb_utils.GitPull(os.path.join(llvm_parent_dir, "llvm/tools/clang"),
+  if lldb_utils.GitPull(os.path.join(llvm_parent_dir, "llvm", "tools", "clang"),
                         "origin", "master:master") != 0:
     print "Error: Failed to pull clang (see error(s) above)"
 

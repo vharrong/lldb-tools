@@ -10,6 +10,9 @@ Specifically:
 """
 
 
+import os
+
+
 import lldb_utils
 
 
@@ -18,11 +21,13 @@ def main():
     print "Error: failed to clone llvm (see errors above)"
     exit(1)
 
-  if lldb_utils.GitClone("llvm/tools", "sso://team/lldb/clang") != 0:
+  if lldb_utils.GitClone(os.path.join("llvm", "tools"),
+                         "sso://team/lldb/clang") != 0:
     print "Error: failed to clone clang (see errors above)"
     exit(1)
 
-  if lldb_utils.GitClone("llvm/tools", "sso://team/lldb/lldb") != 0:
+  if lldb_utils.GitClone(os.path.join("llvm", "tools"),
+                         "sso://team/lldb/lldb") != 0:
     print "Error: failed to clone lldb (see errors above)"
     exit(1)
 
