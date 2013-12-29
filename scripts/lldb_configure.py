@@ -24,6 +24,7 @@ import sys
 
 
 import lldb_utils
+import workingdir
 
 
 def main():
@@ -74,24 +75,20 @@ def main():
   # Make build directory
   os.makedirs(build_dir)
 
-  save_wd = os.getcwd()
-  os.chdir(build_dir)
+  with workingdir.WorkingDir(build_dir):
 
-  command_tokens = (os.path.join("..", "llvm", "configure"),
-                    "--enable-cx11",
-                    "--prefix=%s" % install_dir)
-  print " ".join(command_tokens)
-  status = subprocess.call(command_tokens)
-  if status != 0:
-    print "configure command failed (see above)."
-    exit(1)
+    command_tokens = (os.path.join("..", "llvm", "configure"),
+                      "--enable-cx11",
+                      "--prefix=%s" % install_dir)
+    print " ".join(command_tokens)
+    status = subprocess.call(command_tokens)
+    if status != 0:
+      print "configure command failed (see above)."
+      exit(1)
 
-  print ""
-  print "The build directory has been set up:"
-  print "cd " + build_dir
-
-  os.chdir(save_wd)
-
+    print ""
+    print "The build directory has been set up:"
+    print "cd " + build_dir
 
 if __name__ == "__main__":
   main()

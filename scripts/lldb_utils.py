@@ -11,6 +11,7 @@ GitClone -- Call 'git clone' in a given directory.
 
 import os
 import subprocess
+import workingdir
 
 
 def FindParentInParentChain(item):
@@ -101,18 +102,14 @@ def GitClone(in_dir, remote_path):
     raise TypeError("GitClone requires (local) directory and remote path")
 
   # Go to directory, saving old path
-  save_wd = os.getcwd()
-  print "cd " + in_dir
-  os.chdir(in_dir)
+  with workingdir.WorkingDir(in_dir):
+    print "cd " + in_dir
 
-  command_tokens = ("git", "clone", remote_path)
-  print " ".join(command_tokens)
-  status = subprocess.call(command_tokens)
-  if status != 0:
-    print "git command failed (see above)."
-
-  print "cd " + save_wd
-  os.chdir(save_wd)
+    command_tokens = ("git", "clone", remote_path)
+    print " ".join(command_tokens)
+    status = subprocess.call(command_tokens)
+    if status != 0:
+      print "git command failed (see above)."
 
   return status
 
@@ -139,17 +136,13 @@ def GitPull(in_dir, remote="origin", branch_mapping="master:master"):
     raise TypeError("GitPull requires (local) directory")
 
   # Go to directory, saving old path
-  save_wd = os.getcwd()
-  print "cd " + in_dir
-  os.chdir(in_dir)
+  with workingdir.WorkingDir(in_dir):
+    print "cd " + in_dir
 
-  command_tokens = ("git", "pull", remote, branch_mapping)
-  print " ".join(command_tokens)
-  status = subprocess.call(command_tokens)
-  if status != 0:
-    print "git command failed (see above)."
-
-  print "cd " + save_wd
-  os.chdir(save_wd)
+    command_tokens = ("git", "pull", remote, branch_mapping)
+    print " ".join(command_tokens)
+    status = subprocess.call(command_tokens)
+    if status != 0:
+      print "git command failed (see above)."
 
   return status
