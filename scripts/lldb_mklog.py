@@ -22,7 +22,7 @@ def main():
                           stdout=subprocess.PIPE,
                           stderr=subprocess.STDOUT)
 
-  for line in iter(proc.stdout.readline, ''):
+  for line in iter(proc.stdout.readline, ""):
     sys.stdout.write(line)
     logfile.write(line)
   proc.wait()
