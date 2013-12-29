@@ -4,7 +4,7 @@
 
 Example:
 
-    lldb-gerrit-push.py <reviewer>  [<branch>]
+    lldb_gerrit_push.py <reviewer>  [<branch>]
 
 (where <branch> defaults to "master") will generate and execute the following
 command:
@@ -18,7 +18,7 @@ import sys
 
 
 def UsageAndDie():
-  print "Usage:  lldb-gerrit-push.py  <reviewer>  [<branch>]"
+  print "Usage:  lldb_gerrit_push.py  <reviewer>  [<branch>]"
   exit(1)
 
 
