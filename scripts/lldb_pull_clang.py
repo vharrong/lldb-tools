@@ -1,4 +1,4 @@
-#!/usr/bin/python2.7
+#!/usr/bin/env python
 
 """Do a git pull on just the clang part of the lldb sandbox.
 

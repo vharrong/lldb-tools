@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 """Pushes with git to the appropriate branch for the current directory.
 

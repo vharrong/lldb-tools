@@ -1,4 +1,4 @@
-#!/usr/bin/python2.7
+#!/usr/bin/env python
 
 """Do a git clone on the Google-internal repos required for lldb.
 
