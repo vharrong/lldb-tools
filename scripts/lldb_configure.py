@@ -78,7 +78,7 @@ def main():
   with workingdir.WorkingDir(build_dir):
 
     command_tokens = (os.path.join("..", "llvm", "configure"),
-                      "--enable-cx11",
+                      "--enable-cxx11",
                       "--prefix=%s" % install_dir)
     print " ".join(command_tokens)
     status = subprocess.call(command_tokens)
