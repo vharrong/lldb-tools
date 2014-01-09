@@ -52,8 +52,12 @@ def main():
 
   # find the parent of the llvm directory
   llvm_parent_dir = lldb_utils.FindLLVMParentInParentChain()
-  # print "Found llvm parent dir: " +
-  #     (llvm_parent_dir if llvm_parent_dir else "<none>")
+  print "Found llvm parent dir: " + (llvm_parent_dir if llvm_parent_dir else "<none>")
+
+  # Fail if no such place
+  if not llvm_parent_dir:
+    print "Error: No llvm directory found in parent chain."
+    exit(1)
 
   build_dir = os.path.join(llvm_parent_dir, build_relative_dir)
   install_dir = os.path.join(llvm_parent_dir, install_relative_dir)
@@ -72,6 +76,19 @@ def main():
     lldb_utils.PrintRemoveTreeCommandForPath(install_dir)
     exit(1)
 
+  scripts_dir = os.path.dirname(os.path.realpath(__file__))
+  lldb_dir = os.path.dirname(scripts_dir)
+  local_libedit_dir = os.path.abspath(os.path.join(lldb_dir, "libedit"))
+  local_libedit_include_dir = os.path.join(local_libedit_dir, "include")
+  local_libedit_lib_dir = os.path.join(local_libedit_dir, lldb_utils.FullPlatformName(), "lib")
+
+  if not os.path.exists(local_libedit_lib_dir):
+    print "Error: libedit lib directory for platform does not exist:\n  " + local_libedit_lib_dir
+    exit(1)
+
+  # FIXME: Fix next line for Windows
+  os.environ["LD_LIBRARY_PATH"] = local_libedit_lib_dir + ":" + os.environ["LD_LIBRARY_PATH"]
+
   # Make build directory
   os.makedirs(build_dir)
 
@@ -79,6 +96,8 @@ def main():
 
     command_tokens = (os.path.join("..", "llvm", "configure"),
                       "--enable-cxx11",
+                      "--with-extra-options=-I%s" % local_libedit_include_dir,
+                      "--with-extra-ld-options=-L%s" % local_libedit_lib_dir,
                       "--prefix=%s" % install_dir)
     print " ".join(command_tokens)
     status = subprocess.call(command_tokens)
@@ -89,6 +108,7 @@ def main():
     print ""
     print "The build directory has been set up:"
     print "cd " + build_dir
+
 
 if __name__ == "__main__":
   main()

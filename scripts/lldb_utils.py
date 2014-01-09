@@ -10,7 +10,9 @@ GitClone -- Call 'git clone' in a given directory.
 
 
 import os
+import platform
 import subprocess
+import sys
 import workingdir
 
 
@@ -146,3 +148,12 @@ def GitPull(in_dir, remote="origin", branch_mapping="master:master"):
       print "git command failed (see above)."
 
   return status
+
+
+def FullPlatformName():
+  """Return the full platform name, e.g., linux-x86_64."""
+
+  if (sys.platform.startswith("linux")):
+    return "linux-" + platform.processor()
+  else:
+    raise TypeError("Unsupported architecture: " + sys.platform)
