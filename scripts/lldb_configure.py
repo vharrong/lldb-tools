@@ -18,11 +18,13 @@ Usage: configure_lldb.py [BUILD_DIR [INSTALL_DIR]]
 """
 
 
+# Python built-in modules
 import os
 import subprocess
 import sys
 
 
+# Our modules
 import lldb_utils
 import workingdir
 
