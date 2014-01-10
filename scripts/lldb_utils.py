@@ -29,25 +29,51 @@ def FindParentInParentChain(item):
     ValueError:  if given an absolute path.
 
   """
-  if item.startswith("/"):
+  if os.path.isabs(item):
     raise ValueError("FindParentInParentChain takes relative path")
-  # TODO(spucci): (maybe) add a check for Windows absolute paths as above
   trydir = os.getcwd()
   while True:
     trypath = os.path.join(trydir, item)
     if os.path.exists(trypath):
       return trydir
-    if "/" in trydir:
-      (trydir, unused_a, unused_b) = trydir.rpartition("/")
-    elif "\\" in trydir:  # Windows
-      (trydir, unused_a, unused_b) = trydir.rpartition("\\")
-    else:
+
+    # loop to the parent directory, stopping once we've evaluated at the root.
+    lastdir = trydir
+    trydir = os.path.dirname(lastdir)
+    if os.path.samefile(lastdir, trydir):
       return None
+
+
+def _FindGitOrSvnControlledDirInParentChain(dir_name):
+  """Find VC-controlled dir_name within parent dir chain.
+
+  Args:
+
+    dir_name: the directory name to find in the current directory or
+      one of the parent directories up through the root of the current
+      directory's file system. The directory parent chain is first
+      checked for a dir_name child that is a git-controlled directory.
+      If that fails to find dir_name within the parent chain, it
+      checks to see if a subversion-controlled directory is present.
+
+  Returns:
+    The parent directory of the git/svn-controlled directory specified
+    in the parent chain, or None when the directory specified is not
+    found.
+  """
+
+  # first try assuming git repos
+  parent = FindParentInParentChain(os.path.join(dir_name, ".git"))
+  if parent:
+    return parent
+
+  # next try assuming svn
+  return FindParentInParentChain(os.path.join(dir_name, ".svn"))
 
 
 def FindLLVMParentInParentChain():
   """Find the llvm tree above us or at the same level."""
-  return FindParentInParentChain(os.path.join("llvm", ".git"))
+  return _FindGitOrSvnControlledDirInParentChain("llvm")
 
 
 def FindInExecutablePath(prog):
@@ -153,7 +179,7 @@ def GitPull(in_dir, remote="origin", branch_mapping="master:master"):
 def FullPlatformName():
   """Return the full platform name, e.g., linux-x86_64."""
 
-  if (sys.platform.startswith("linux")):
+  if sys.platform.startswith("linux"):
     return "linux-" + platform.processor()
   else:
     raise TypeError("Unsupported architecture: " + sys.platform)
