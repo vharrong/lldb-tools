@@ -115,10 +115,15 @@ def RequireProdaccess():
   Uses prodcertstatus and parses output.
 
   """
-  prodstatus = subprocess.check_output("prodcertstatus",
-                                       stderr=subprocess.STDOUT)
+  try:
+    prodstatus = subprocess.check_output("prodcertstatus",
+                                         stderr=subprocess.STDOUT)
+  except subprocess.CalledProcessError as e:
+    prodstatus = e.output
   if not prodstatus.startswith("LOAS cert expires in "):
+    prodstatus = prodstatus.rstrip("\n")
     print "prodstatus is '" + prodstatus + "'"
+    print "Do you need to run prodaccess?"
     exit(1)
 
 
