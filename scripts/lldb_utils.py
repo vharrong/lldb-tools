@@ -109,6 +109,19 @@ def PrintRemoveTreeCommandForPath(path):
   print "rm -rf " + path    # TODO(spucci): Fix Windows
 
 
+def RequireProdaccess():
+  """Exit with an error message if no prodaccess.
+
+  Uses prodcertstatus and parses output.
+
+  """
+  prodstatus = subprocess.check_output("prodcertstatus",
+                                       stderr=subprocess.STDOUT)
+  if not prodstatus.startswith("LOAS cert expires in "):
+    print "prodstatus is '" + prodstatus + "'"
+    exit(1)
+
+
 def GitClone(in_dir, remote_path):
   """Run "git clone" in a given directory.
 

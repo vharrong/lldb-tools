@@ -14,10 +14,13 @@ import subprocess
 
 
 # Our modules
+import lldb_utils
 import workingdir
 
 
 def main():
+  lldb_utils.RequireProdaccess()
+
   # Make tools directory if necessary
   os.makedirs("tools")
 

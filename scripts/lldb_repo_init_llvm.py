@@ -13,10 +13,17 @@ using the repo manifest in sso://team/lldb/llvm-manifests
 """
 
 
+# Python built-in modules
 import subprocess
 
 
+# Our modules
+import lldb_utils
+
+
 def main():
+  lldb_utils.RequireProdaccess()
+
   command_tokens = ("repo", "init", "-u", "sso://team/lldb/llvm-manifests")
   print " ".join(command_tokens)
   status = subprocess.call(command_tokens)
