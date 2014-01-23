@@ -9,10 +9,13 @@ GitClone -- Call 'git clone' in a given directory.
 """
 
 
+import calendar
 import os
 import platform
+import re
 import subprocess
 import sys
+import time
 import workingdir
 
 
@@ -109,22 +112,53 @@ def PrintRemoveTreeCommandForPath(path):
   print "rm -rf " + path    # TODO(spucci): Fix Windows
 
 
+def SSOCookieExpired():
+  """Return whether ~/.sso/cookie says it's expired.
+
+  If the cookie file is missing, we presume it's expired.
+
+  Returns:
+    True iff the cookie is missing or has expired.
+
+  """
+  cookie_dir = os.path.join(os.environ["HOME"], ".sso")
+  cookie_path = os.path.join(cookie_dir, "cookie")
+  if not os.path.exists(cookie_path):
+    return True
+  cookie_string = open(cookie_path).read()
+
+  match = re.search("expires=(\\d+),", cookie_string)
+  if match:
+    cookie_date = int(match.group(1))
+    now_date = calendar.timegm(time.gmtime())
+    return now_date > cookie_date
+  else:
+    print "Warning: no cookie expiration in file " + cookie_path
+    return False
+
+
 def RequireProdaccess():
   """Exit with an error message if no prodaccess.
 
   Uses prodcertstatus and parses output.
 
   """
-  try:
-    prodstatus = subprocess.check_output("prodcertstatus",
-                                         stderr=subprocess.STDOUT)
-  except subprocess.CalledProcessError as e:
-    prodstatus = e.output
-  if not prodstatus.startswith("LOAS cert expires in "):
-    prodstatus = prodstatus.rstrip("\n")
-    print "prodstatus is '" + prodstatus + "'"
-    print "Do you need to run prodaccess?"
-    exit(1)
+  if sys.platform.startswith("linux"):
+    try:
+      prodstatus = subprocess.check_output("prodcertstatus",
+                                           stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+      prodstatus = e.output
+      if not prodstatus.startswith("LOAS cert expires in "):
+        prodstatus = prodstatus.rstrip("\n")
+        print "prodstatus is '" + prodstatus + "'"
+        print "Do you need to run prodaccess?"
+        exit(1)
+  else:
+    if SSOCookieExpired():
+      print "SSO login expired!  To fix, run:"
+      print "git credential-sso login"
+      exit(1)
 
 
 def GitClone(in_dir, remote_path):
