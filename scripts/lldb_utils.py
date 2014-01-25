@@ -5,9 +5,7 @@ FindLLVMParentInParentChain -- Find 'llvm' in the parent chain.
 FindInExecutablePath -- Find a program in the executable path.
 PrintRemoveTreeCommandForPath -- print a command to remove a path.
 RequireProdaccess -- abort if prodaccess is not up to date.
-GitClone -- Call 'git clone' in a given directory.
-GitPull -- Call 'git pull' in a given directory.
-SvnUpdate -- Call 'svn update' in a given directory.
+RunInDirectory -- call given command in given directory.
 FullPlatformName -- Return full platform, e.g., linux-x86_64.
 
 """
@@ -165,101 +163,32 @@ def RequireProdaccess():
       exit(1)
 
 
-def GitClone(in_dir, remote_path):
-  """Run "git clone" in a given directory.
+def RunInDirectory(in_dir, command_tokens):
+  """Run given command in a given directory.
 
   Will leave the cwd untouched on exit.
 
   Args:
-    in_dir: (local) directory in which to run the 'git clone'
-    remote_path: the git remote path to clone
+    in_dir: directory in which to run the command
+    command_tokens: tokens which comprise the command.
 
   Returns:
-    The 'git' command status.
+    The command status.
 
   Raises:
     TypeError: if there are missing arguments
 
   """
 
-  if not remote_path:
-    raise TypeError("GitClone requires (local) directory and remote path")
+  if not command_tokens:
+    raise TypeError("RunInDirectory requires directory and command tokens")
 
   # Go to directory, saving old path
-  with workingdir.WorkingDir(in_dir):
-    print "cd " + in_dir
-
-    command_tokens = ("git", "clone", remote_path)
+  with workingdir.WorkingDir(in_dir, echo_changes=True):
     print " ".join(command_tokens)
     status = subprocess.call(command_tokens)
     if status != 0:
-      print "git command failed (see above)."
-
-  return status
-
-
-def GitPull(in_dir, remote="origin", branch_mapping="master:master"):
-  """Run "git pull" in a given directory.
-
-  Will leave the cwd untouched on exit.
-
-  Args:
-    in_dir: the (local) directory in which to run the 'git ull'
-    remote: (optional) the remote to pull from (defaults to: "origin")
-    branch_mapping: (optional) branch mapping (defaults to: "master:master")
-
-  Returns:
-    The 'git' command status.
-
-  Raises:
-    TypeError: if there are missing arguments
-
-  """
-
-  if not in_dir:
-    raise TypeError("GitPull requires (local) directory")
-
-  # Go to directory, saving old path
-  with workingdir.WorkingDir(in_dir):
-    print "cd " + in_dir
-
-    command_tokens = ("git", "pull", remote, branch_mapping)
-    print " ".join(command_tokens)
-    status = subprocess.call(command_tokens)
-    if status != 0:
-      print "git command failed (see above)."
-
-  return status
-
-
-def SvnUpdate(in_dir):
-  """Run "svn update" in a given directory.
-
-  Will leave the cwd untouched on exit.
-
-  Args:
-    in_dir: the (local) directory in which to run the 'git ull'
-
-  Returns:
-    The 'svn' command status.
-
-  Raises:
-    TypeError: if there are missing arguments
-
-  """
-
-  if not in_dir:
-    raise TypeError("GitPull requires (local) directory")
-
-  # Go to directory, saving old path
-  with workingdir.WorkingDir(in_dir):
-    print "cd " + in_dir
-
-    command_tokens = ("svn", "update")
-    print " ".join(command_tokens)
-    status = subprocess.call(command_tokens)
-    if status != 0:
-      print "svn command failed (see above)."
+      print "command failed (see above)."
 
   return status
 

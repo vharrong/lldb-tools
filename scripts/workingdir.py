@@ -27,15 +27,18 @@ class WorkingDir(object):
   """Context manager class for changing the working directory with restore.
   """
 
-  def __init__(self, newWorkingDir):
+  def __init__(self, newWorkingDir, echo_changes=False):
     # save current directory
     self._initial_dir = os.getcwd()
     self._target_dir = newWorkingDir
+    self._echo_changes = echo_changes
 
   def __enter__(self):
     # change into the dir
+    if self._echo_changes and self._target_dir != ".": print "cd " + self._target_dir
     os.chdir(self._target_dir)
 
   def __exit__(self, exc_type, exc_value, traceback):
     # revert to the starting directory regardless of any exceptions
+    if self._echo_changes and self._target_dir != ".": print "cd " + self._initial_dir
     os.chdir(self._initial_dir)

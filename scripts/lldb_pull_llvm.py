@@ -17,8 +17,8 @@ def main():
   if not llvm_parent_dir:
     raise ValueError("Not in (or adjacent to) an llvm tree")
 
-  if lldb_utils.GitPull(os.path.join(llvm_parent_dir, "llvm"),
-                        "origin", "master:master") != 0:
+  if lldb_utils.RunInDirectory(os.path.join(llvm_parent_dir, "llvm"),
+                               ("git", "pull", "origin", "master:master")) != 0:
     print "Error: Failed to pull llvm (see error(s) above)"
 
 
