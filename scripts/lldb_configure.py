@@ -30,7 +30,7 @@ import workingdir
 
 
 def AddFileForFindInProject():
-  filename = ".emacs-project"
+  filename = os.path.join("llvm", "tools", "lldb", ".emacs-project")
   if os.path.exists(filename):
     os.remove(filename)
   f = open(filename, "w")
