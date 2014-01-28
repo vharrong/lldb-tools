@@ -29,6 +29,16 @@ import lldb_utils
 import workingdir
 
 
+def AddFileForFindInProject():
+  filename = ".emacs-project"
+  if os.path.exists(filename):
+    os.remove(filename)
+  f = open(filename, "w")
+  f.write(r'(setl ffip-regexp ".*\\.\\(cpp\\|c\\|h\\)$")')
+  f.write("\n")
+  f.close()
+
+
 def main():
   # determine build directory
   if len(sys.argv) >= 2:
@@ -93,6 +103,8 @@ def main():
 
   # Make build directory
   os.makedirs(build_dir)
+
+  AddFileForFindInProject()
 
   with workingdir.WorkingDir(build_dir):
 
