@@ -40,6 +40,9 @@ def AddFileForFindInProject():
 
 
 def main():
+  # Do this first so it will work even if everything else fails (e.g., on a Mac)
+  AddFileForFindInProject()
+
   # determine build directory
   if len(sys.argv) >= 2:
     build_relative_dir = sys.argv[1]
@@ -103,8 +106,6 @@ def main():
 
   # Make build directory
   os.makedirs(build_dir)
-
-  AddFileForFindInProject()
 
   with workingdir.WorkingDir(build_dir):
 
