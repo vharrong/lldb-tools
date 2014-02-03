@@ -29,8 +29,8 @@ import lldb_utils
 import workingdir
 
 
-def AddFileForFindInProject():
-  filename = os.path.join("llvm", "tools", "lldb", ".emacs-project")
+def AddFileForFindInProject(llvm_parent_dir):
+  filename = os.path.join(llvm_parent_dir, "llvm", "tools", "lldb", ".emacs-project")
   if os.path.exists(filename):
     os.remove(filename)
   f = open(filename, "w")
@@ -40,9 +40,6 @@ def AddFileForFindInProject():
 
 
 def main():
-  # Do this first so it will work even if everything else fails (e.g., on a Mac)
-  AddFileForFindInProject()
-
   # determine build directory
   if len(sys.argv) >= 2:
     build_relative_dir = sys.argv[1]
@@ -57,14 +54,6 @@ def main():
     install_relative_dir = "install"
   # print "Using install dir: " + install_relative_dir
 
-  # fail if there is a clang in the path
-  clang_path = lldb_utils.FindInExecutablePath("clang")
-  if clang_path:
-    print "Error: 'clang' was found in PATH: " + clang_path
-    print "Our lldb build setup does not support building with clang."
-    print "Please remove clang from your path."
-    exit(1)
-
   # find the parent of the llvm directory
   llvm_parent_dir = lldb_utils.FindLLVMParentInParentChain()
   print "Found llvm parent dir: " + (llvm_parent_dir if llvm_parent_dir else "<none>")
@@ -72,6 +61,17 @@ def main():
   # Fail if no such place
   if not llvm_parent_dir:
     print "Error: No llvm directory found in parent chain."
+    exit(1)
+
+  # Do this before checking for clang so it will work even if if that fails (e.g., on a Mac)
+  AddFileForFindInProject(llvm_parent_dir)
+
+  # fail if there is a clang in the path
+  clang_path = lldb_utils.FindInExecutablePath("clang")
+  if clang_path:
+    print "Error: 'clang' was found in PATH: " + clang_path
+    print "Our lldb build setup does not support building with clang."
+    print "Please remove clang from your path."
     exit(1)
 
   build_dir = os.path.join(llvm_parent_dir, build_relative_dir)
