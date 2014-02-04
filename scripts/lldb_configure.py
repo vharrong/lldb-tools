@@ -111,6 +111,7 @@ def main():
 
     command_tokens = (os.path.join("..", "llvm", "configure"),
                       "--enable-cxx11",
+                      "--disable-libedit",  # Don't pick up for llvm, for now...
                       "--with-extra-options=-I%s" % local_libedit_include_dir,
                       "--with-extra-ld-options=-L%s" % local_libedit_lib_dir,
                       "--prefix=%s" % install_dir)
