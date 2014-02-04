@@ -576,7 +576,7 @@ class Remote(object):
         return None
 
       u = self.review
-      if not u.startswith('http:') and not u.startswith('https:') and not u.startswith('sso:'):
+      if u.split(':')[0] not in ('http', 'https', 'sso'):
         u = 'http://%s' % u
       if u.endswith('/Gerrit'):
         u = u[:len(u) - len('/Gerrit')]
