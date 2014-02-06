@@ -57,7 +57,7 @@ def AddFileForFindInProject(llvm_parent_dir):
   if os.path.exists(filename):
     os.remove(filename)
   f = open(filename, "w")
-  f.write(r'(setl ffip-regexp ".*\\.\\(cpp\\|c\\|h\\)$")')
+  f.write(r'(setl ffip-regexp ".*\\.\\(py\\|cpp\\|c\\|h\\)$")')
   f.write("\n")
   f.close()
 
