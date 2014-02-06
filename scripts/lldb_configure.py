@@ -2,13 +2,10 @@
 
 """Run configure for the lldb project.
 
-Usage: configure_lldb.py [BUILD_DIR [INSTALL_DIR]]
-   BUILD_DIR defaults to 'build'.
-   INSTALL_DIR defaults to 'install'.
+ See lldb_configure.py -h for usage.
 
- Runs, in <llvm>/../BUILD_DIR:
- <llvm>/configure --prefix=<llvm>/../INSTALL_DIR.
- where <llvm> is an llvm directory that is git-controlled.
+ Configures lldb to be build with either configure/(g)make (the
+ default) or cmake/ninja (with an appropriate flag).
 
  This script checks to make sure that the system does
  not have a clang defined in the path.  Currently this will
@@ -19,9 +16,9 @@ Usage: configure_lldb.py [BUILD_DIR [INSTALL_DIR]]
 
 
 # Python built-in modules
+import argparse
 import os
 import subprocess
-import sys
 
 
 # Our modules
@@ -29,8 +26,34 @@ import lldb_utils
 import workingdir
 
 
+def ParseCommandLine():
+  """Parse the command line and return a parser results object.
+
+  Parse the command line arguments, returning a parser object
+  suitable to control command execution decisions.
+
+  Returns:
+    A parser results object containing the results of parsing the command line.
+  """
+  parser = argparse.ArgumentParser(
+      description="Configure lldb build environment.")
+
+  parser.add_argument(
+      "--cmake", "-c", action="store_true", dest="use_cmake",
+      help="set configure system to cmake (default: configure)")
+  parser.add_argument(
+      "--build-dir", "-b", action="store", default="build",
+      help="specify the build dir, default: build")
+  parser.add_argument(
+      "--install-dir", "-i", action="store", default="install",
+      help="specify the install dir, default: install")
+
+  return parser.parse_args()
+
+
 def AddFileForFindInProject(llvm_parent_dir):
-  filename = os.path.join(llvm_parent_dir, "llvm", "tools", "lldb", ".emacs-project")
+  filename = os.path.join(llvm_parent_dir, "llvm", "tools", "lldb",
+                          ".emacs-project")
   if os.path.exists(filename):
     os.remove(filename)
   f = open(filename, "w")
@@ -40,30 +63,20 @@ def AddFileForFindInProject(llvm_parent_dir):
 
 
 def main():
-  # determine build directory
-  if len(sys.argv) >= 2:
-    build_relative_dir = sys.argv[1]
-  else:
-    build_relative_dir = "build"
-  # print "Using build dir: " + build_relative_dir
-
-  # determine install directory
-  if len(sys.argv) >= 3:
-    install_relative_dir = sys.argv[2]
-  else:
-    install_relative_dir = "install"
-  # print "Using install dir: " + install_relative_dir
+  args = ParseCommandLine()
 
   # find the parent of the llvm directory
   llvm_parent_dir = lldb_utils.FindLLVMParentInParentChain()
-  print "Found llvm parent dir: " + (llvm_parent_dir if llvm_parent_dir else "<none>")
+  print "Found llvm parent dir: " + (llvm_parent_dir
+                                     if llvm_parent_dir else "<none>")
 
   # Fail if no such place
   if not llvm_parent_dir:
     print "Error: No llvm directory found in parent chain."
     exit(1)
 
-  # Do this before checking for clang so it will work even if if that fails (e.g., on a Mac)
+  # Do this before checking for clang so it will work even if if that
+  # fails (e.g., on a Mac)
   AddFileForFindInProject(llvm_parent_dir)
 
   # fail if there is a clang in the path
@@ -74,8 +87,8 @@ def main():
     print "Please remove clang from your path."
     exit(1)
 
-  build_dir = os.path.join(llvm_parent_dir, build_relative_dir)
-  install_dir = os.path.join(llvm_parent_dir, install_relative_dir)
+  build_dir = os.path.join(llvm_parent_dir, args.build_dir)
+  install_dir = os.path.join(llvm_parent_dir, args.install_dir)
 
   # fail if the build directory already exists
   if os.path.exists(build_dir):
@@ -95,25 +108,40 @@ def main():
   lldb_dir = os.path.dirname(scripts_dir)
   local_libedit_dir = os.path.abspath(os.path.join(lldb_dir, "libedit"))
   local_libedit_include_dir = os.path.join(local_libedit_dir, "include")
-  local_libedit_lib_dir = os.path.join(local_libedit_dir, lldb_utils.FullPlatformName(), "lib")
+  local_libedit_lib_dir = os.path.join(local_libedit_dir,
+                                       lldb_utils.FullPlatformName(), "lib")
 
   if not os.path.exists(local_libedit_lib_dir):
-    print "Error: libedit lib directory for platform does not exist:\n  " + local_libedit_lib_dir
+    print("Error: libedit lib directory for platform does not exist:\n  " +
+          local_libedit_lib_dir)
     exit(1)
 
   # FIXME: Fix next line for Windows
-  os.environ["LD_LIBRARY_PATH"] = local_libedit_lib_dir + ":" + os.environ["LD_LIBRARY_PATH"]
+  os.environ["LD_LIBRARY_PATH"] = (local_libedit_lib_dir +
+                                   ":" + os.environ["LD_LIBRARY_PATH"])
 
   # Make build directory
   os.makedirs(build_dir)
 
   with workingdir.WorkingDir(build_dir):
 
-    command_tokens = (os.path.join("..", "llvm", "configure"),
-                      "--enable-cxx11",
-                      "--with-extra-options=-I%s" % local_libedit_include_dir,
-                      "--with-extra-ld-options=-L%s" % local_libedit_lib_dir,
-                      "--prefix=%s" % install_dir)
+    if args.use_cmake:
+      command_tokens = ("cmake",
+                        "-GNinja",
+                        "-DCMAKE_CXX_COMPILER=g++",
+                        "-DCMAKE_C_COMPILER=gcc",
+                        "-DLLVM_ENABLE_CXX11=ON",
+                        "-DCMAKE_CXX_FLAGS=-I%s" % local_libedit_include_dir,
+                        "-DCMAKE_EXE_LINKER_FLAGS=-L%s" % local_libedit_lib_dir,
+                        "-DCMAKE_INSTALL_PREFIX:PATH=%s" % install_dir,
+                        os.path.join("..", "llvm"))
+    else:
+      command_tokens = (os.path.join("..", "llvm", "configure"),
+                        "--enable-cxx11",
+                        "--with-extra-options=-I%s" % local_libedit_include_dir,
+                        "--with-extra-ld-options=-L%s" % local_libedit_lib_dir,
+                        "--prefix=%s" % install_dir)
+
     print " ".join(command_tokens)
     status = subprocess.call(command_tokens)
     if status != 0:
