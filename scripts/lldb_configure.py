@@ -47,6 +47,15 @@ def ParseCommandLine():
   parser.add_argument(
       "--install-dir", "-i", action="store", default="install",
       help="specify the install dir, default: install")
+  parser.add_argument(
+      "--release", "-r", action="store_true",
+      help="enable a release build. Default: (debug)")
+  parser.add_argument(
+      "--release-debug", "-d", action="store_true",
+      help="enable a release build with debug info. Default: (debug)")
+  parser.add_argument(
+      "--coverage", action="store_true",
+      help="enable code coverage capture during exe runs. Default: no capture")
 
   return parser.parse_args()
 
@@ -60,6 +69,22 @@ def AddFileForFindInProject(llvm_parent_dir):
   f.write(r'(setl ffip-regexp ".*\\.\\(py\\|cpp\\|c\\|h\\)$")')
   f.write("\n")
   f.close()
+
+
+def GetCxxFlags(args, libedit_include_dir):
+  flags = "-I%s" % libedit_include_dir
+  if args.coverage:
+    # add code coverage flags
+    flags += " -fprofile-arcs -ftest-coverage"
+  return flags
+
+
+def GetLdFlags(args, libedit_lib_dir):
+  flags = "-L%s" % libedit_lib_dir
+  if args.coverage:
+    # add code coverage flags
+    flags += " -fprofile-arcs -ftest-coverage"
+  return flags
 
 
 def main():
@@ -120,27 +145,64 @@ def main():
   os.environ["LD_LIBRARY_PATH"] = (local_libedit_lib_dir +
                                    ":" + os.environ["LD_LIBRARY_PATH"])
 
+  # if code coverage is enabled, we must have debug info, either by
+  # --release-debug or debug (i.e. release must not be set)
+  if args.coverage and args.release:
+    print("Error: code coverage requires debug info in the build.\n"
+          "Choose --release-debug or exclude --release on the command line.")
+    exit(1)
+
   # Make build directory
   os.makedirs(build_dir)
 
   with workingdir.WorkingDir(build_dir):
 
+    cxx_flags = GetCxxFlags(args, local_libedit_include_dir)
+    ld_flags = GetLdFlags(args, local_libedit_lib_dir)
+
     if args.use_cmake:
+      if args.release_debug:
+        build_type_name = "RelWithDebInfo"
+      elif args.release:
+        build_type_name = "Release"
+      else:
+        build_type_name = "Debug"
+      config_message = "configured for cmake/ninja (%s)" % build_type_name
+
       command_tokens = ("cmake",
                         "-GNinja",
                         "-DCMAKE_CXX_COMPILER=g++",
                         "-DCMAKE_C_COMPILER=gcc",
                         "-DLLVM_ENABLE_CXX11=ON",
-                        "-DCMAKE_CXX_FLAGS=-I%s" % local_libedit_include_dir,
-                        "-DCMAKE_EXE_LINKER_FLAGS=-L%s" % local_libedit_lib_dir,
+                        "-DCMAKE_CXX_FLAGS=%s" % cxx_flags,
+                        "-DCMAKE_EXE_LINKER_FLAGS=%s" % ld_flags,
                         "-DCMAKE_INSTALL_PREFIX:PATH=%s" % install_dir,
+                        "-DCMAKE_BUILD_TYPE=%s" % build_type_name,
                         os.path.join("..", "llvm"))
     else:
-      command_tokens = (os.path.join("..", "llvm", "configure"),
+      command_tokens = [os.path.join("..", "llvm", "configure"),
                         "--enable-cxx11",
-                        "--with-extra-options=-I%s" % local_libedit_include_dir,
-                        "--with-extra-ld-options=-L%s" % local_libedit_lib_dir,
-                        "--prefix=%s" % install_dir)
+                        "--prefix=%s" % install_dir]
+
+      if args.release_debug:
+        command_tokens.append("--enable-optimizations")
+        command_tokens.append("--enable-assertions")
+        # we need to add -g to tell it to include debug info in the
+        # release build
+        cxx_flags += " -g"
+        config_message = ("configured for configure/(g)make "
+                          "release,debuginfo,assertions)")
+      elif args.release:
+        command_tokens.append("--enable-optimizations")
+        command_tokens.append("--disable-assertions")
+        config_message = "configured for configure/(g)make (release)"
+      else:
+        command_tokens.append("--disable-optimizations")
+        command_tokens.append("--enable-assertions")
+        config_message = "configured for configure/(g)make (debug,assertions)"
+
+      command_tokens.append("--with-extra-options=%s" % cxx_flags)
+      command_tokens.append("--with-extra-ld-options=%s" % ld_flags)
 
     print " ".join(command_tokens)
     status = subprocess.call(command_tokens)
@@ -149,6 +211,7 @@ def main():
       exit(1)
 
     print ""
+    print config_message
     print "The build directory has been set up:"
     print "cd " + build_dir
 
