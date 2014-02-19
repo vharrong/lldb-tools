@@ -45,17 +45,26 @@ def ParseCommandLine():
       "--build-dir", "-b", action="store", default="build",
       help="specify the build dir, default: build")
   parser.add_argument(
+      "--coverage", action="store_true",
+      help="enable code coverage capture during exe runs. Default: no capture")
+  parser.add_argument(
       "--install-dir", "-i", action="store", default="install",
       help="specify the install dir, default: install")
   parser.add_argument(
       "--release", "-r", action="store_true",
       help="enable a release build. Default: (debug)")
   parser.add_argument(
-      "--release-debug", "-d", action="store_true",
+      "--release-debug", action="store_true",
       help="enable a release build with debug info. Default: (debug)")
   parser.add_argument(
-      "--coverage", action="store_true",
-      help="enable code coverage capture during exe runs. Default: no capture")
+      "--stock-libedit", action="store_true",
+      help="use stock system libedit/libedit-dev. Default: use lldb-specific "
+      "libedit")
+  parser.add_argument(
+      "--with-python-dir",
+      action="store",
+      default=os.environ.get("LLDB_PYTHON_BASE_DIR"),
+      help="specify alternate python root dir")
 
   return parser.parse_args()
 
@@ -72,18 +81,61 @@ def AddFileForFindInProject(llvm_parent_dir):
 
 
 def GetCxxFlags(args, libedit_include_dir):
-  flags = "-I%s" % libedit_include_dir
+  """Construct C++ compiler flags required for the given options.
+
+  Args:
+    args: the results from parsing the command line.
+
+    libedit_include_dir: the location where libedit include files
+      should come from when not using the stock libedit.
+
+  Returns:
+    The C++ compiler flags required for the given options.
+
+  """
+  if args.stock_libedit:
+    flags = ""
+  else:
+    flags = "-I%s" % libedit_include_dir
+
   if args.coverage:
     # add code coverage flags
     flags += " -fprofile-arcs -ftest-coverage"
+
+  if args.with_python_dir:
+    flags += " -I%s" % os.path.join(
+        args.with_python_dir, "include", "python2.7")
+
   return flags
 
 
 def GetLdFlags(args, libedit_lib_dir):
-  flags = "-L%s" % libedit_lib_dir
+  """Construct linker flags required for the given options.
+
+  Args:
+    args: the results from parsing the command line.
+
+    libedit_lib_dir: the location where libedit lib files
+      should come from when not using the stock libedit.
+
+  Returns:
+    The C++ compiler flags required for the given options.
+
+  """
+  if args.stock_libedit:
+    flags = ""
+  else:
+    flags = "-L%s" % libedit_lib_dir
+
   if args.coverage:
     # add code coverage flags
     flags += " -fprofile-arcs -ftest-coverage"
+
+  if args.with_python_dir:
+    flags += " -L{} -L{}".format(
+        os.path.join(args.with_python_dir, "lib"),
+        os.path.join(args.with_python_dir, "lib", "python2.7", "config"))
+
   return flags
 
 
@@ -212,6 +264,17 @@ def main():
 
     print ""
     print config_message
+    if args.stock_libedit:
+      print "using stock system libedit"
+    else:
+      print "using custom libedit ({},{})".format(
+          local_libedit_include_dir, local_libedit_lib_dir)
+
+    if args.with_python_dir:
+      print "using custom python ({})".format(args.with_python_dir)
+    else:
+      print "using stock system python"
+
     print "The build directory has been set up:"
     print "cd " + build_dir
 
