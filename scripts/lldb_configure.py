@@ -237,7 +237,7 @@ def main():
                         "--prefix=%s" % install_dir]
 
       if args.release_debug:
-        command_tokens.append("--enable-optimizations")
+        command_tokens.append("--enable-optimized")
         command_tokens.append("--enable-assertions")
         # we need to add -g to tell it to include debug info in the
         # release build
@@ -245,11 +245,11 @@ def main():
         config_message = ("configured for configure/(g)make "
                           "release,debuginfo,assertions)")
       elif args.release:
-        command_tokens.append("--enable-optimizations")
+        command_tokens.append("--enable-optimized")
         command_tokens.append("--disable-assertions")
         config_message = "configured for configure/(g)make (release)"
       else:
-        command_tokens.append("--disable-optimizations")
+        command_tokens.append("--disable-optimized")
         command_tokens.append("--enable-assertions")
         config_message = "configured for configure/(g)make (debug,assertions)"
 
