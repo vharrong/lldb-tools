@@ -227,9 +227,13 @@ def main():
                         "-DCMAKE_C_COMPILER=gcc",
                         "-DLLVM_ENABLE_CXX11=ON",
                         "-DCMAKE_CXX_FLAGS=%s" % cxx_flags,
+                        "-DCMAKE_SHARED_LINKER_FLAGS=%s" % ld_flags,
                         "-DCMAKE_EXE_LINKER_FLAGS=%s" % ld_flags,
                         "-DCMAKE_INSTALL_PREFIX:PATH=%s" % install_dir,
                         "-DCMAKE_BUILD_TYPE=%s" % build_type_name,
+                        # Do not include this next flag if you want to see
+                        # cmake maintainer-related messages.
+                        "-Wno-dev",
                         os.path.join("..", "llvm"))
     else:
       command_tokens = [os.path.join("..", "llvm", "configure"),
