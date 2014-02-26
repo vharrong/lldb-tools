@@ -189,13 +189,17 @@ def main():
                                        lldb_utils.FullPlatformName(), "lib")
 
   if not os.path.exists(local_libedit_lib_dir):
-    print("Error: libedit lib directory for platform does not exist:\n  " +
+    print("Warning: libedit lib directory for platform does not exist:\n  " +
           local_libedit_lib_dir)
-    exit(1)
-
-  # FIXME: Fix next line for Windows
-  os.environ["LD_LIBRARY_PATH"] = (local_libedit_lib_dir +
-                                   ":" + os.environ["LD_LIBRARY_PATH"])
+    print "Forcing use of stock libedit"
+    args.stock_libedit = True
+  else:
+    # FIXME: address LD_LIBRARY_PATH analog for Windows
+    if "LD_LIBRARY_PATH" in os.environ:
+      os.environ["LD_LIBRARY_PATH"] = (local_libedit_lib_dir +
+                                       ":" + os.environ["LD_LIBRARY_PATH"])
+    else:
+      os.environ["LD_LIBRARY_PATH"] = local_libedit_lib_dir
 
   # if code coverage is enabled, we must have debug info, either by
   # --release-debug or debug (i.e. release must not be set)
