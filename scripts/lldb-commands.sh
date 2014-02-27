@@ -268,5 +268,16 @@ function make_lldb_tags () {
     return $retval
 }
 
+# This function executes gpylint on the given argument using
+# the tools/scripts/pylintrc file as the --rcfile argument.
+function gpy () {
+    local RCFILE="$HOME/lldb/tools/scripts/support/pylintrc"
+    if [ -f "$RCFILE" ]; then
+        gpylint --rcfile=$RCFILE $@
+    else
+        echo "gpy requires pylintrc to exist here: \"$RCFILE\""
+    fi
+}
+
 alias mklog=lldb_mklog.py
 alias mkilog=lldb_mkilog.py
