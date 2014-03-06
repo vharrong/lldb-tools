@@ -229,7 +229,6 @@ def main():
                         "-GNinja",
                         "-DCMAKE_CXX_COMPILER=g++",
                         "-DCMAKE_C_COMPILER=gcc",
-                        "-DLLVM_ENABLE_CXX11=ON",
                         "-DCMAKE_CXX_FLAGS=%s" % cxx_flags,
                         "-DCMAKE_SHARED_LINKER_FLAGS=%s" % ld_flags,
                         "-DCMAKE_EXE_LINKER_FLAGS=%s" % ld_flags,
