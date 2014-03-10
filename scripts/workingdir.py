@@ -35,12 +35,14 @@ class WorkingDir(object):
 
   def __enter__(self):
     # change into the dir
-    if (self._initial_dir != self._target_dir):
-      if self._echo_changes and self._target_dir != ".": print "cd " + self._target_dir
+    if self._initial_dir != self._target_dir:
+      if self._echo_changes and self._target_dir != ".":
+        print "cd " + self._target_dir
       os.chdir(self._target_dir)
 
   def __exit__(self, exc_type, exc_value, traceback):
     # revert to the starting directory regardless of any exceptions
-    if (self._initial_dir != self._target_dir):
-      if self._echo_changes and self._target_dir != ".": print "cd " + self._initial_dir
+    if self._initial_dir != self._target_dir:
+      if self._echo_changes and self._target_dir != ".":
+        print "cd " + self._initial_dir
       os.chdir(self._initial_dir)

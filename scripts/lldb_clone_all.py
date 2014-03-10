@@ -17,7 +17,8 @@ import lldb_utils
 
 
 def main():
-  if lldb_utils.RunInDirectory(".", ("git", "clone", "sso://team/lldb/llvm")) != 0:
+  if lldb_utils.RunInDirectory(".",
+                               ("git", "clone", "sso://team/lldb/llvm")) != 0:
     print "Error: failed to clone llvm (see errors above)"
     exit(1)
 

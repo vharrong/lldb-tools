@@ -268,11 +268,14 @@ function make_lldb_tags () {
     return $retval
 }
 
+export _LLDB_SCRIPTPATH=$(cd $(dirname $BASH_SOURCE); pwd -P)
+
 # This function executes gpylint on the given argument using
 # the tools/scripts/pylintrc file as the --rcfile argument.
 function gpy () {
-    local RCFILE="$HOME/lldb/tools/scripts/support/pylintrc"
+    local RCFILE="$_LLDB_SCRIPTPATH/support/pylintrc"
     if [ -f "$RCFILE" ]; then
+        echo "gpylint --rcfile=$RCFILE <args>"
         gpylint --rcfile=$RCFILE $@
     else
         echo "gpy requires pylintrc to exist here: \"$RCFILE\""

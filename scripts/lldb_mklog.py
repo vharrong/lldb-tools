@@ -39,7 +39,6 @@ def main():
   else:
     unfiltered_logfile = open("make.log", "w")
 
-
   proc = subprocess.Popen(["make"] + sys.argv[real_arg_start:],
                           bufsize=1,
                           stdout=subprocess.PIPE,
@@ -48,7 +47,7 @@ def main():
   # Just go ahead and make these variables, assuming we're filtering
   prev_line = None
   prev_error_line = None
-  skip_lines = 0;  # The number of lines to skip *checking*
+  skip_lines = 0  # The number of lines to skip *checking*
   pattern = r"^(.*): warning: format ‘%p’ expects argument of type ‘void"
   pattern_prog = re.compile(pattern)
 
@@ -72,7 +71,7 @@ def main():
         if prev_line and not skip_prev_line:
           sys.stdout.write(prev_line)
           filtered_logfile.write(prev_line)
-        prev_line = line;
+        prev_line = line
     else:
       sys.stdout.write(line)
   if do_filter and prev_line:  # Write the last held line

@@ -16,9 +16,14 @@ def main():
   if not llvm_parent_dir:
     raise ValueError("Not in (or adjacent to) an llvm tree")
 
-  lldb_utils.RunInDirectory(os.path.join(llvm_parent_dir, "llvm"), ("svn", "update"))
-  lldb_utils.RunInDirectory(os.path.join(llvm_parent_dir, "llvm", "tools", "clang"), ("svn", "update"))
-  lldb_utils.RunInDirectory(os.path.join(llvm_parent_dir, "llvm", "tools", "lldb"), ("svn", "update"))
+  lldb_utils.RunInDirectory(os.path.join(llvm_parent_dir, "llvm"),
+                            ("svn", "update"))
+  lldb_utils.RunInDirectory(os.path.join(llvm_parent_dir,
+                                         "llvm", "tools", "clang"),
+                            ("svn", "update"))
+  lldb_utils.RunInDirectory(os.path.join(llvm_parent_dir,
+                                         "llvm", "tools", "lldb"),
+                            ("svn", "update"))
 
 
 if __name__ == "__main__":
