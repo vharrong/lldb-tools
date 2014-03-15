@@ -50,3 +50,8 @@ function lldb_collate_test_results () {
     printf "unsupported (skip linux):  %4d (%5.2f%% of unsupported tests)\n" $UNSUPPORTED_SKIP_LINUX_COUNT $UNSUPPORTED_SKIP_LINUX_PERCENT
     printf "unsupported (other):       %4d (%5.2f%% of unsupported tests)\n" $UNSUPPORTED_OTHER_COUNT $UNSUPPORTED_OTHER_PERCENT
 }
+
+function lldb_test_list_xfail () {
+    grep '^XFAIL: LLDB' $1 | awk 'match($0,":: ([A-Za-z0-9_]+) \\(([A-Za-z0-9_\\.]+)\\)", m) { printf "%s,%s\n", m[2], m[1] }'
+}
+
