@@ -19,6 +19,7 @@ tree to keep generated files out of the source tree.
 """
 
 
+import os
 import re
 import subprocess
 import sys
@@ -39,7 +40,18 @@ def main():
   else:
     unfiltered_logfile = open("make.log", "w")
 
-  proc = subprocess.Popen(["make"] + sys.argv[real_arg_start:],
+  build_command = None
+  if os.path.exists("Makefile"):
+    build_command = "make"
+  elif os.path.exists("build.ninja"):
+    build_command = "ninja"
+  else:
+    print "No Makefile or build.ninja present in working directory."
+    print "Please run this in a build directory created with"
+    print "lldb_configure.py [--cmake]"
+    exit(1)
+
+  proc = subprocess.Popen([build_command] + sys.argv[real_arg_start:],
                           bufsize=1,
                           stdout=subprocess.PIPE,
                           stderr=subprocess.STDOUT)
