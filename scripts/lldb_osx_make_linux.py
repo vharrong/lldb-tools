@@ -1,16 +1,18 @@
 #!/usr/bin/env python
 
+import getpass
+import os
 import os.path
 import re
 import subprocess
 
-_USER = "tfiala"
+_USER = getpass.getuser()
 
 _COMMON_SYNC_OPTS = "-avzhe ssh"
 _COMMON_EXCLUDE_OPTS = "--exclude=DerivedData --exclude=.svn --exclude=.git --exclude=llvm-build/Release+Asserts"
 
 _LINUX_SYNC_ROOT_PATH = "lldb/macosx.sync"
-_LOCAL_SYNC_LLDB_PATH = "~/lldb/git/s01/lldb"
+_LOCAL_SYNC_LLDB_PATH = os.getcwd()
 
 _REMOTE_HOSTNAME = "tfiala2.mtv.corp.google.com"
 
