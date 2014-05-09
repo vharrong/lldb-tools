@@ -18,6 +18,7 @@ _REMOTE_HOSTNAME = "tfiala2.mtv.corp.google.com"
 
 
 _LLDB_DIR_RELATIVE_REGEX = re.compile("%s/llvm/tools/lldb/" % _LINUX_SYNC_ROOT_PATH)
+_LLVM_DIR_RELATIVE_REGEX = re.compile("%s/" % _LINUX_SYNC_ROOT_PATH)
 
 
 def sync_llvm():
@@ -57,7 +58,14 @@ def maybe_configure():
 
 
 def filter_build_line(line):
-    return _LLDB_DIR_RELATIVE_REGEX.sub('', line)
+    lldb_relative_line = _LLDB_DIR_RELATIVE_REGEX.sub('', line)
+    if len(lldb_relative_line) != len(line):
+        # We substituted - return the modified line
+        return lldb_relative_line
+
+    # No match on lldb path (longer on linux than llvm path).  Try
+    # the llvm path match.
+    return _LLVM_DIR_RELATIVE_REGEX.sub('', line)
 
 
 def build():
