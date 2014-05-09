@@ -14,7 +14,15 @@ import subprocess
 _COMMON_SYNC_OPTS = "-avzhe ssh"
 _COMMON_EXCLUDE_OPTS = "--exclude=DerivedData --exclude=.svn --exclude=.git --exclude=llvm-build/Release+Asserts"
 
-# _LOCAL_SYNC_LLDB_PATH = os.getcwd()
+def normalize_configuration(config_text):
+    if not config_text:
+        return "debug"
+
+    config_lower = config_text.lower()
+    if config_lower in ["debug", "release"]:
+        return config_lower
+    else:
+        raise Exception("unknown configuration specified: %s" % config_text)
 
 def parse_args():
     DEFAULT_REMOTE_ROOT_DIR = "/mnt/ssd/work/macosx.sync"
@@ -23,6 +31,10 @@ def parse_args():
 
     parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 
+    parser.add_argument(
+        "--configuration", "-c",
+        help="specify configuration (Debug, Release)",
+        default=normalize_configuration(os.environ.get('CONFIGURATION', 'Debug')))
     parser.add_argument(
         "--local-lldb-dir", "-l", metavar="DIR",
         help="specify local lldb directory (Xcode layout assumed for llvm/clang)",
@@ -60,7 +72,14 @@ def maybe_create_remote_root_dir(args):
 
 
 def init_with_args(args):
+    # Expand any user directory specs in local-side source dir (on MacOSX).
     args.local_lldb_dir = os.path.expanduser(args.local_lldb_dir)
+
+    # Append the configuration type to the remote build dir.
+    args.configuration = normalize_configuration(args.configuration)
+    args.remote_build_dir = os.path.join(
+        args.remote_dir,
+        "build-%s" % args.configuration)
 
     # We assume the local lldb directory is really named 'lldb'.
     # This is because on the remote end, the local lldb root dir
@@ -113,14 +132,14 @@ def maybe_configure(args):
     commandline = [
         "ssh",
         "%s@%s" % (args.user, args.remote_address),
-        "cd",
-        args.remote_dir,
-        "&&",
-        "touch",
-        "llvm/.git",
-        "&&",
-        "lldb_configure.py",
-        "-c"]
+        "cd", args.remote_dir, "&&",
+        "touch", "llvm/.git", "&&",
+        "lldb_configure.py", "-c", "-b", args.remote_build_dir
+        ]
+
+    if args.configuration == 'release':
+        commandline.append('--release')
+
     return subprocess.call(commandline)
 
 
@@ -135,15 +154,12 @@ def filter_build_line(args, line):
     return args.llvm_dir_relative_regex.sub('', line)
 
 
-def build(args):
+def run_remote_build_command(args, build_command_list):
     commandline = [
-        "ssh",
-        "%s@%s" % (args.user, args.remote_address),
-        "cd",
-        "%s/build" % args.remote_dir,
-        "&&",
-        "time",
-        "ninja"]
+        "ssh", "%s@%s" % (args.user, args.remote_address),
+        "cd", args.remote_build_dir, "&&"]
+    commandline.extend(build_command_list)
+
     proc = subprocess.Popen(
         commandline,
         stdout=subprocess.PIPE,
@@ -167,41 +183,14 @@ def build(args):
         proc_retval = proc.poll()
         if proc_retval != None:
             return proc_retval
+
+
+def build(args):
+    return run_remote_build_command(args, ["time", "ninja"])
 
 
 def clean(args):
-    commandline = [
-        "ssh",
-        "%s@%s" % (args.user, args.remote_address),
-        "cd",
-        "%s/build" % args.remote_dir,
-        "&&",
-        "time",
-        "ninja",
-        "clean"]
-    proc = subprocess.Popen(
-        commandline,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
-
-    # Filter stdout/stderr output for file path mapping.
-    # We do this to enable Xcode to see filenames relative to the
-    # MacOSX-side directory structure.
-    while True:
-        reads = [proc.stdout.fileno(), proc.stderr.fileno()]
-        select_result = select.select(reads, [], [])
-
-        for fd in select_result[0]:
-            if fd == proc.stdout.fileno():
-                line = proc.stdout.readline()
-                print(filter_build_line(args, line.rstrip()))
-            elif fd == proc.stderr.fileno():
-                line = proc.stderr.readline()
-                print(filter_build_line(args, line.rstrip()), file=sys.stderr)
-
-        proc_retval = proc.poll()
-        if proc_retval != None:
-            return proc_retval
+    return run_remote_build_command(args, ["ninja", "clean"])
 
 
 if __name__ == "__main__":
