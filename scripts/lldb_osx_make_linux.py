@@ -11,10 +11,13 @@ _USER = getpass.getuser()
 _COMMON_SYNC_OPTS = "-avzhe ssh"
 _COMMON_EXCLUDE_OPTS = "--exclude=DerivedData --exclude=.svn --exclude=.git --exclude=llvm-build/Release+Asserts"
 
-_LINUX_SYNC_ROOT_PATH = "lldb/macosx.sync"
+_LINUX_SYNC_ROOT_PATH = "/mnt/ssd/work/macosx.sync"
 _LOCAL_SYNC_LLDB_PATH = os.getcwd()
 
 _REMOTE_HOSTNAME = "tfiala2.mtv.corp.google.com"
+
+
+_LLDB_DIR_RELATIVE_REGEX = re.compile("%s/llvm/tools/lldb/" % _LINUX_SYNC_ROOT_PATH)
 
 
 def sync_llvm():
@@ -53,6 +56,10 @@ def maybe_configure():
     return subprocess.call(commandline)
 
 
+def filter_build_line(line):
+    return _LLDB_DIR_RELATIVE_REGEX.sub('', line)
+
+
 def build():
     commandline = [
         "ssh",
@@ -62,7 +69,15 @@ def build():
         "&&",
         "time",
         "ninja"]
-    return subprocess.call(commandline)
+    proc = subprocess.Popen(commandline, stdout=subprocess.PIPE)
+    while True:
+        line = proc.stdout.readline()
+        if line != '':
+            #the real code does filtering here
+            print filter_build_line(line)
+        else:
+            break
+    return None
 
 
 if __name__ == "__main__":
