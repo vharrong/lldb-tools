@@ -182,6 +182,24 @@ def run_remote_build_command(args, build_command_list):
 
         proc_retval = proc.poll()
         if proc_retval != None:
+            # Process stopped.  Drain output before finishing up.
+
+            # Drain stdout.
+            while True:
+                line = proc.stdout.readline()
+                if line:
+                    print(filter_build_line(args, line.rstrip()))
+                else:
+                    break
+
+            # Drain stderr.
+            while True:
+                line = proc.stderr.readline()
+                if line:
+                    print(filter_build_line(args, line.rstrip()), file=sys.stderr)
+                else:
+                    break
+
             return proc_retval
 
 
