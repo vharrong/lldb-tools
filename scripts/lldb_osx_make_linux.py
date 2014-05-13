@@ -11,7 +11,7 @@ import select
 import sys
 import subprocess
 
-_COMMON_SYNC_OPTS = "-avzhe ssh"
+_COMMON_SYNC_OPTS = "-avzhe ssh --delete"
 _COMMON_EXCLUDE_OPTS = "--exclude=DerivedData --exclude=.svn --exclude=.git --exclude=llvm-build/Release+Asserts"
 
 def normalize_configuration(config_text):
@@ -111,6 +111,7 @@ def sync_llvm(args):
     commandline = ['rsync']
     commandline.extend(_COMMON_SYNC_OPTS.split())
     commandline.extend(_COMMON_EXCLUDE_OPTS.split())
+    commandline.append("--exclude=/llvm/tools/lldb")
     commandline.extend([
         "%s/llvm" % args.local_lldb_dir,
         "%s@%s:%s" % (args.user, args.remote_address, args.remote_dir)])
