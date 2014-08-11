@@ -37,6 +37,10 @@ def parse_args():
         help="specify configuration (Debug, Release)",
         default=normalize_configuration(os.environ.get('CONFIGURATION', 'Debug')))
     parser.add_argument(
+        "--debug", "-d",
+        action="store_true",
+        help="help debug the remote-build script by adding extra logging")
+    parser.add_argument(
         "--local-lldb-dir", "-l", metavar="DIR",
         help="specify local lldb directory (Xcode layout assumed for llvm/clang)",
         default=os.getcwd())
@@ -49,7 +53,7 @@ def parse_args():
         help="specify the dns name or ip address of the remote linux system",
         default=DEFAULT_REMOTE_HOSTNAME)
     parser.add_argument(
-        "--remote-dir", "-d", metavar="DIR",
+        "--remote-dir", metavar="DIR",
         help="specify the root of the linux source/build dir",
         default=DEFAULT_REMOTE_ROOT_DIR)
     parser.add_argument(
@@ -123,8 +127,8 @@ def sync_llvm(args):
     commandline.extend([
         "%s/llvm" % args.local_lldb_dir,
         "%s@%s:%s" % (args.user, args.remote_address, args.remote_dir)])
-    # remove me
-    print("going to execute sync: {}".format(commandline))
+    if args.debug:
+        print("going to execute llvm sync: {}".format(commandline))
     return subprocess.call(commandline)
 
 
@@ -137,6 +141,8 @@ def sync_lldb(args):
     commandline.extend([
         args.local_lldb_dir,
         "%s@%s:%s/llvm/tools" % (args.user, args.remote_address, args.remote_dir)])
+    if args.debug:
+        print("going to execute lldb sync: {}".format(commandline))
     return subprocess.call(commandline)
 
 
@@ -184,7 +190,8 @@ def maybe_configure(args):
         ]
     commandline.extend(build_cmake_command(args))
 
-    print("configure command: {}".format(commandline))
+    if args.debug:
+        print("configure command: {}".format(commandline))
 
     return subprocess.call(commandline)
 
@@ -208,6 +215,9 @@ def run_remote_build_command(args, build_command_list):
         "cd", args.remote_build_dir, "&&"]
     commandline.extend(build_command_list)
 
+    if args.debug:
+        print("running remote build command: {}".format(commandline))
+
     proc = subprocess.Popen(
         commandline,
         stdout=subprocess.PIPE,
@@ -223,10 +233,14 @@ def run_remote_build_command(args, build_command_list):
         for fd in select_result[0]:
             if fd == proc.stdout.fileno():
                 line = proc.stdout.readline()
-                print(filter_build_line(args, line.rstrip()))
+                display_line = filter_build_line(args, line.rstrip())
+                if display_line and len(display_line) > 0:
+                    print(display_line)
             elif fd == proc.stderr.fileno():
                 line = proc.stderr.readline()
-                print(filter_build_line(args, line.rstrip()), file=sys.stderr)
+                display_line = filter_build_line(args, line.rstrip())
+                if display_line and len(display_line) > 0:
+                    print(display_line, file=sys.stderr)
 
         proc_retval = proc.poll()
         if proc_retval != None:
@@ -236,7 +250,9 @@ def run_remote_build_command(args, build_command_list):
             while True:
                 line = proc.stdout.readline()
                 if line:
-                    print(filter_build_line(args, line.rstrip()))
+                    display_line = filter_build_line(args, line.rstrip())
+                    if display_line and len(display_line) > 0:
+                        print(display_line)
                 else:
                     break
 
@@ -244,7 +260,9 @@ def run_remote_build_command(args, build_command_list):
             while True:
                 line = proc.stderr.readline()
                 if line:
-                    print(filter_build_line(args, line.rstrip()), file=sys.stderr)
+                    display_line = filter_build_line(args, line.rstrip())
+                    if display_line and len(display_line) > 0:
+                        print(display_line, file=sys.stderr)
                 else:
                     break
 
