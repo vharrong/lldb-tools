@@ -11,7 +11,7 @@ import select
 import sys
 import subprocess
 
-_COMMON_SYNC_OPTS = "-avzhe ssh --delete"
+_COMMON_SYNC_OPTS = "-avzh --delete"
 _COMMON_EXCLUDE_OPTS = "--exclude=DerivedData --exclude=.svn --exclude=.git --exclude=llvm-build/Release+Asserts"
 
 def normalize_configuration(config_text):
@@ -27,7 +27,8 @@ def normalize_configuration(config_text):
 def parse_args():
     DEFAULT_REMOTE_ROOT_DIR = "/mnt/ssd/work/macosx.sync"
     DEFAULT_REMOTE_HOSTNAME = "tfiala2.mtv.corp.google.com"
-    OPTIONS_FILENAME = '.remote-build.conf'
+    OPTIONS_FILENAME = ".remote-build.conf"
+    DEFAULT_SSH_PORT = "22"
 
     parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 
@@ -39,6 +40,10 @@ def parse_args():
         "--local-lldb-dir", "-l", metavar="DIR",
         help="specify local lldb directory (Xcode layout assumed for llvm/clang)",
         default=os.getcwd())
+    parser.add_argument(
+        "--port", "-p",
+        help="specify the port ssh should use to connect to the remote side",
+        default=DEFAULT_SSH_PORT)
     parser.add_argument(
         "--remote-address", "-r", metavar="REMOTE-ADDR",
         help="specify the dns name or ip address of the remote linux system",
@@ -64,10 +69,12 @@ def parse_args():
 def maybe_create_remote_root_dir(args):
     commandline = [
         "ssh",
+        "-p", args.port,
         "%s@%s" % (args.user, args.remote_address),
         "mkdir",
         "-p",
         args.remote_dir]
+    print("create remote root dir command:\n{}".format(commandline))
     return subprocess.call(commandline)
 
 
@@ -108,22 +115,26 @@ def init_with_args(args):
     return True
 
 def sync_llvm(args):
-    commandline = ['rsync']
+    commandline = ["rsync"]
     commandline.extend(_COMMON_SYNC_OPTS.split())
     commandline.extend(_COMMON_EXCLUDE_OPTS.split())
     commandline.append("--exclude=/llvm/tools/lldb")
+    commandline.extend(["-e", "ssh -p {}".format(args.port)])
     commandline.extend([
         "%s/llvm" % args.local_lldb_dir,
         "%s@%s:%s" % (args.user, args.remote_address, args.remote_dir)])
+    # remove me
+    print("going to execute sync: {}".format(commandline))
     return subprocess.call(commandline)
 
 
 def sync_lldb(args):
-    commandline = ['rsync']
+    commandline = ["rsync"]
     commandline.extend(_COMMON_SYNC_OPTS.split())
     commandline.extend(_COMMON_EXCLUDE_OPTS.split())
+    commandline.append("--exclude=/lldb/llvm")
+    commandline.extend(["-e", "ssh -p {}".format(args.port)])
     commandline.extend([
-        "--exclude=/lldb/llvm",
         args.local_lldb_dir,
         "%s@%s:%s/llvm/tools" % (args.user, args.remote_address, args.remote_dir)])
     return subprocess.call(commandline)
@@ -165,11 +176,11 @@ def build_cmake_command(args):
 def maybe_configure(args):
     commandline = [
         "ssh",
+        "-p", args.port,
         "%s@%s" % (args.user, args.remote_address),
         "cd", args.remote_dir, "&&",
         "mkdir", "-p", args.remote_build_dir, "&&",
-        "cd", args.remote_build_dir,
-        "touch", "llvm/.git", "&&",
+        "cd", args.remote_build_dir, "&&"
         ]
     commandline.extend(build_cmake_command(args))
 
@@ -191,7 +202,9 @@ def filter_build_line(args, line):
 
 def run_remote_build_command(args, build_command_list):
     commandline = [
-        "ssh", "%s@%s" % (args.user, args.remote_address),
+        "ssh",
+        "-p", args.port,
+        "%s@%s" % (args.user, args.remote_address),
         "cd", args.remote_build_dir, "&&"]
     commandline.extend(build_command_list)
 
