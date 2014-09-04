@@ -57,6 +57,10 @@ def parse_args():
         help="specify the root of the linux source/build dir",
         default=DEFAULT_REMOTE_ROOT_DIR)
     parser.add_argument(
+        "--use-gcc",
+        action="store_true",
+        help="use gcc/g++ compiler (default: use clang)")
+    parser.add_argument(
         "--user", "-u", help="specify the user name for the remote system",
         default=getpass.getuser())
     parser.add_argument(
@@ -157,6 +161,13 @@ def build_cmake_command(args):
     else:
         build_type_name = "Debug"
 
+    if args.use_gcc:
+        cc_compiler = "gcc"
+        cxx_compiler = "g++"
+    else:
+        cc_compiler = "clang"
+        cxx_compiler = "clang"
+
     ld_flags = "\"-lstdc++ -lm\""
 
     install_dir = os.path.join(
@@ -165,8 +176,8 @@ def build_cmake_command(args):
     command_line = [
         "cmake",
         "-GNinja",
-        "-DCMAKE_CXX_COMPILER=clang",
-        "-DCMAKE_C_COMPILER=clang",
+        "-DCMAKE_CXX_COMPILER={}".format(cxx_compiler),
+        "-DCMAKE_C_COMPILER={}".format(cc_compiler),
         # "-DCMAKE_CXX_FLAGS=%s" % cxx_flags,
         "-DCMAKE_SHARED_LINKER_FLAGS=%s" % ld_flags,
         "-DCMAKE_EXE_LINKER_FLAGS=%s" % ld_flags,
