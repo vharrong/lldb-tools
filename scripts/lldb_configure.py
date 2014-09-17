@@ -39,6 +39,15 @@ def ParseCommandLine():
       description="Configure lldb build environment.")
 
   parser.add_argument(
+      "-target", action="store", dest="target", default="x86",
+      help="specify the target type, x86, android (default: x86)")
+  parser.add_argument(
+      "-arch", action="store", dest="arch",
+      help="specify the arch type, x86, x86-android, armeabi")
+  parser.add_argument(
+      "-toolchain", action="store", dest="toolchain",
+      help="specify the standalone toolchain dir (fullpath) for Android build")
+  parser.add_argument(
       "-a", "--enable-assertions", action="store_true", dest="enable_assertions",
       help="enable assert() runtime checks (default: disabled)")
   parser.add_argument(
@@ -121,11 +130,32 @@ def GetToolNames(args):
   class Tool_Names: pass
 
   tool_names = Tool_Names()
-  tool_names.config = ("configure" if not args.use_cmake else "cmake")
-  tool_names.make = ("make" if not args.use_ninja else "ninja")
-  tool_names.cc = ("gcc" if not args.use_clang else "clang")
-  tool_names.cxx = ("g++" if not args.use_clang else "clang++")
-  tool_names.ld = ("ld" if not args.use_gold else "ld.gold")
+  if args.target == "android":  
+    if not args.toolchain:
+        print("Missing standalone toolchain path, see -help")
+        exit()
+        
+    if not args.arch:
+        print("Missing arch specification, see -help")
+        exit()
+            
+    # convert to cmake script style string
+    if args.arch == "x86-android":
+        args.arch = "x86"
+        
+    args.use_cmake = 1;
+    tool_names.config = ("cmake")
+    args.use_ninja = 1;
+    tool_names.make = ("ninja")
+    tool_names.cc = ("gcc")
+    tool_names.cxx = ("g++")
+    tool_names.ld = ("ld")
+  else:
+    tool_names.config = ("configure" if not args.use_cmake else "cmake")
+    tool_names.make = ("make" if not args.use_ninja else "ninja")
+    tool_names.cc = ("gcc" if not args.use_clang else "clang")
+    tool_names.cxx = ("g++" if not args.use_clang else "clang++")
+    tool_names.ld = ("ld" if not args.use_gold else "ld.gold")
 
   # add distcc prefix if enabled
   if args.use_distcc:
@@ -235,7 +265,6 @@ def main():
   cxx_flags = GetCxxFlags(args)
   ld_flags = GetLdFlags(args)
 
-
   # Make build directory
   os.makedirs(build_dir)
 
@@ -257,19 +286,36 @@ def main():
       cxx_flags += " -g"
 
     if args.use_cmake:
-      command_tokens = ("cmake",
-                        ("" if not args.use_ninja else "-GNinja"),
-                        "-DCMAKE_LINKER=" + tool_names.ld,
-                        "-DCMAKE_CXX_FLAGS=" + cxx_flags,
-                        "-DCMAKE_SHARED_LINKER_FLAGS=" + ld_flags,
-                        "-DCMAKE_EXE_LINKER_FLAGS=" + ld_flags,
-                        "-DCMAKE_INSTALL_PREFIX:PATH=" + install_dir,
-                        "-DCMAKE_BUILD_TYPE=" + build_type_name,
-                        # Do not include this next flag if you want to see
-                        # cmake maintainer-related messages.
-                        "-Wno-dev",
-                        os.path.join("..", "llvm"))
-
+      if args.target == "android":
+        print("Configuring for " + args.target + ", " + args.arch + ", " + args.toolchain)
+        command_tokens = ("cmake",
+                         ("" if not args.use_ninja else "-GNinja"),
+                          "-DCMAKE_TOOLCHAIN_FILE=../lldb-tools/android.toolchain.cmake",
+                          "-DANDROID_STANDALONE_TOOLCHAIN=" + args.toolchain,
+                          "-DPYTHON_EXECUTABLE=" + args.toolchain + "/bin/python",
+                          "-DANDROID_TOOLCHAIN_NAME=standalone",                              
+                          "-DCMAKE_CXX_COMPILER_VERSION=4.8",                          
+                          "-DANDROID_ABI=" + args.arch,                          
+                          "-DANDROID_STL=none",
+                          "-DCMAKE_INSTALL_PREFIX:PATH=" + install_dir,
+                          "-DCMAKE_BUILD_TYPE=" + build_type_name,
+                          # Do not include this next flag if you want to see
+                          # cmake maintainer-related messages.
+                          "-Wno-dev",
+                          os.path.join("..", "llvm"))
+      else:
+          command_tokens = ("cmake",
+                           ("" if not args.use_ninja else "-GNinja"),
+                          "-DCMAKE_LINKER=" + tool_names.ld,
+                          "-DCMAKE_CXX_FLAGS=" + cxx_flags,
+                          "-DCMAKE_SHARED_LINKER_FLAGS=" + ld_flags,
+                          "-DCMAKE_EXE_LINKER_FLAGS=" + ld_flags,
+                          "-DCMAKE_INSTALL_PREFIX:PATH=" + install_dir,
+                          "-DCMAKE_BUILD_TYPE=" + build_type_name,
+                          # Do not include this next flag if you want to see
+                          # cmake maintainer-related messages.
+                          "-Wno-dev",
+                          os.path.join("..", "llvm"))            
     else:
       command_tokens = [os.path.join("..", "llvm", "configure"),
                         "--enable-cxx11",
@@ -289,15 +335,19 @@ def main():
       command_tokens.append("--with-extra-ld-options=%s" % ld_flags)
 
     env_vars = os.environ
-    env_vars["CC"] = tool_names.cc
-    env_vars["CXX"] = tool_names.cxx
-    env_vars["DISTCC_HOSTS"] = ""
-    if args.use_ccache and args.use_clang:
-      env_vars["CCACHE_CPP2"] = "yes"  # This is intended to silence preproc -I warnings, but is not working as expected
+    # these environment settings really mess up the Android cmake file
+    if args.target != 'android':
+      env_vars["CC"] = tool_names.cc
+      env_vars["CXX"] = tool_names.cxx
+      env_vars["DISTCC_HOSTS"] = ""
+      
+      if args.use_ccache and args.use_clang:
+        env_vars["CCACHE_CPP2"] = "yes"  # This is intended to silence preproc -I warnings, but is not working as expected
 
-    print "CC='" + tool_names.cc + "' CXX='" + tool_names.cxx + "' " + " ".join(command_tokens)
+      print "CC='" + tool_names.cc + "' CXX='" + tool_names.cxx + "' " + " ".join(command_tokens)
+
     status = subprocess.call(command_tokens, env=env_vars)
-#    status = 0;
+    #    status = 0;
     if status != 0:
       print "configure command failed (see above)."
       exit(1)
