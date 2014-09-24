@@ -141,7 +141,7 @@ def GetToolNames(args):
             
     # convert to cmake script style string
     if args.arch == "x86-android":
-        args.arch = "x86"
+        args.arch = "x86_64"
         
     args.use_cmake = 1;
     tool_names.config = ("cmake")
