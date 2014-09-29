@@ -1,0 +1,102 @@
+diff --git a/include/llvm/Target/TargetLibraryInfo.h b/include/llvm/Target/TargetLibraryInfo.h
+index 389fd25..49114bd 100644
+--- a/include/llvm/Target/TargetLibraryInfo.h
++++ b/include/llvm/Target/TargetLibraryInfo.h
+@@ -13,6 +13,12 @@
+ #include "llvm/ADT/DenseMap.h"
+ #include "llvm/Pass.h"
+ 
++#if ANDROID
++#undef stat64
++#undef lstat64
++#undef fstat64
++#endif
++
+ namespace llvm {
+   class Triple;
+ 
+diff --git a/lib/Support/Unix/RWMutex.inc b/lib/Support/Unix/RWMutex.inc
+index edcbd52..85a1043 100644
+--- a/lib/Support/Unix/RWMutex.inc
++++ b/lib/Support/Unix/RWMutex.inc
+@@ -26,26 +26,26 @@ using namespace sys;
+ // will therefore deadlock if a thread tries to acquire a read lock
+ // multiple times.
+ 
+-RWMutexImpl::RWMutexImpl() : data_(new Mutex(false)) { }
++RWMutexImpl::RWMutexImpl() : data_(new MutexImpl(false)) { }
+ 
+ RWMutexImpl::~RWMutexImpl() {
+-  delete static_cast<Mutex *>(data_);
++  delete static_cast<MutexImpl *>(data_);
+ }
+ 
+ bool RWMutexImpl::reader_acquire() {
+-  return static_cast<Mutex *>(data_)->acquire();
++  return static_cast<MutexImpl *>(data_)->acquire();
+ }
+ 
+ bool RWMutexImpl::reader_release() {
+-  return static_cast<Mutex *>(data_)->release();
++  return static_cast<MutexImpl *>(data_)->release();
+ }
+ 
+ bool RWMutexImpl::writer_acquire() {
+-  return static_cast<Mutex *>(data_)->acquire();
++  return static_cast<MutexImpl *>(data_)->acquire();
+ }
+ 
+ bool RWMutexImpl::writer_release() {
+-  return static_cast<Mutex *>(data_)->release();
++  return static_cast<MutexImpl *>(data_)->release();
+ }
+ 
+ }
+diff --git a/lib/Transforms/Hello/CMakeLists.txt b/lib/Transforms/Hello/CMakeLists.txt
+index 3851b35..f374049 100644
+--- a/lib/Transforms/Hello/CMakeLists.txt
++++ b/lib/Transforms/Hello/CMakeLists.txt
+@@ -6,7 +6,7 @@ if( NOT LLVM_REQUIRES_RTTI )
+   endif()
+ endif()
+ 
+-if(WIN32 OR CYGWIN)
++if(WIN32 OR CYGWIN OR ANDROID)
+   set(LLVM_LINK_COMPONENTS Core Support)
+ endif()
+ 
+diff --git a/tools/bugpoint-passes/CMakeLists.txt b/tools/bugpoint-passes/CMakeLists.txt
+index de68bb5..520962f 100644
+--- a/tools/bugpoint-passes/CMakeLists.txt
++++ b/tools/bugpoint-passes/CMakeLists.txt
+@@ -10,7 +10,7 @@ if( NOT LLVM_REQUIRES_RTTI )
+   endif()
+ endif()
+ 
+-if(WIN32 OR CYGWIN)
++if(WIN32 OR CYGWIN OR ANDROID)
+   set(LLVM_LINK_COMPONENTS Core)
+ endif()
+ 
+diff --git a/utils/unittest/googletest/include/gtest/internal/gtest-port.h b/utils/unittest/googletest/include/gtest/internal/gtest-port.h
+index f5bfd4e..86dda70 100644
+--- a/utils/unittest/googletest/include/gtest/internal/gtest-port.h
++++ b/utils/unittest/googletest/include/gtest/internal/gtest-port.h
+@@ -271,7 +271,7 @@
+ 
+ // Defines this to true iff Google Test can use POSIX regular expressions.
+ #ifndef GTEST_HAS_POSIX_RE
+-# define GTEST_HAS_POSIX_RE (!GTEST_OS_WINDOWS)
++# define GTEST_HAS_POSIX_RE (!GTEST_OS_WINDOWS && !GTEST_OS_LINUX_ANDROID)
+ #endif
+ 
+ #if GTEST_HAS_POSIX_RE
+@@ -523,7 +523,7 @@
+ #ifndef GTEST_HAS_CLONE
+ // The user didn't tell us, so we need to figure it out.
+ 
+-# if GTEST_OS_LINUX && !defined(__ia64__)
++# if GTEST_OS_LINUX && !defined(__ia64__) && !(GTEST_OS_LINUX_ANDROID)
+ #  define GTEST_HAS_CLONE 1
+ # else
+ #  define GTEST_HAS_CLONE 0

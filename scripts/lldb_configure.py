@@ -43,10 +43,13 @@ def ParseCommandLine():
       help="specify the target type, x86, android (default: x86)")
   parser.add_argument(
       "-arch", action="store", dest="arch",
-      help="specify the arch type, x86, x86-android, armeabi")
+      help="specify the target arch type, x86, x86-android, armeabi")
   parser.add_argument(
       "-toolchain", action="store", dest="toolchain",
       help="specify the standalone toolchain dir (fullpath) for Android build")
+  parser.add_argument(
+      "-tblgen_dir", action="store", dest="tblgen_dir",
+      help="specify the path to host machine's llvm-tblgen and clang-tblgen")
   parser.add_argument(
       "-a", "--enable-assertions", action="store_true", dest="enable_assertions",
       help="enable assert() runtime checks (default: disabled)")
@@ -135,13 +138,13 @@ def GetToolNames(args):
         print("Missing standalone toolchain path, see -help")
         exit()
         
+    if not args.tblgen_dir:
+    	print("Missing llvm-tblgen and clang-tblgen path, see -help")
+    	exit()
+    	
     if not args.arch:
         print("Missing arch specification, see -help")
-        exit()
-            
-    # convert to cmake script style string
-    if args.arch == "x86-android":
-        args.arch = "x86_64"
+        exit()           
         
     args.use_cmake = 1;
     tool_names.config = ("cmake")
@@ -288,9 +291,28 @@ def main():
     if args.use_cmake:
       if args.target == "android":
         print("Configuring for " + args.target + ", " + args.arch + ", " + args.toolchain)
+    	# convert to cmake script style string
+    	# todo: 32bit x86
+    	if args.arch == "x86-android":
+        	args.arch = "x86_64"
+        	llvm_target_arch = "X86"
+        	llvm_targets_to_build = "X86"
+        # todo: 64bit arm and mips
+        else:
+        	llvm_target_arch = "ARM"
+        	llvm_targets_to_build = "ARM"
+        	
+        llvm_tblgen = args.tblgen_dir + "/llvm-tblgen"
+        clang_tblgen = args.tblgen_dir + "/clang-tblgen"
+        if not os.path.isfile(llvm_tblgen):
+        	print "Can't find " + llvm_tblgen
+        	exit()
+        if not os.path.isfile(clang_tblgen):
+        	print "Can't find " + clang_tblgen
+        	exit()
         command_tokens = ("cmake",
                          ("" if not args.use_ninja else "-GNinja"),
-                          "-DCMAKE_TOOLCHAIN_FILE=../lldb-tools/android.toolchain.cmake",
+                          "-DCMAKE_TOOLCHAIN_FILE=../lldb-tools/android/android.toolchain.cmake",
                           "-DANDROID_STANDALONE_TOOLCHAIN=" + args.toolchain,
                           "-DPYTHON_EXECUTABLE=" + args.toolchain + "/bin/python",
                           "-DANDROID_TOOLCHAIN_NAME=standalone",                              
@@ -299,6 +321,10 @@ def main():
                           "-DANDROID_STL=none",
                           "-DCMAKE_INSTALL_PREFIX:PATH=" + install_dir,
                           "-DCMAKE_BUILD_TYPE=" + build_type_name,
+                          "-DLLVM_TARGET_ARCH=" + llvm_target_arch,
+                          "-DLLVM_TARGETS_TO_BUILD=" + llvm_targets_to_build,
+                          "-DLLVM_TABLEGEN=" + llvm_tblgen,
+                          "-DCLANG_TABLEGEN=" + clang_tblgen, 
                           # Do not include this next flag if you want to see
                           # cmake maintainer-related messages.
                           "-Wno-dev",
