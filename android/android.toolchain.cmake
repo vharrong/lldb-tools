@@ -1245,8 +1245,9 @@ set( CMAKE_COMPILER_IS_GNUASM 1)
 set( CMAKE_ASM_SOURCE_FILE_EXTENSIONS s S asm )
 
 # flags and definitions
-remove_definitions( -DANDROID )
-add_definitions( -DANDROID )
+remove_definitions( -DANDROID -D__ANDROID__ )
+#add_definitions( -DANDROID -D__ANDROID__ )
+add_definitions( -DANDROID -D__ANDROID_NDK__ )
 
 if( ANDROID_SYSROOT MATCHES "[ ;\"]" )
  if( CMAKE_HOST_WIN32 )
@@ -1603,6 +1604,7 @@ endif()
 # set these global flags for cmake client scripts to change behavior
 set( ANDROID True )
 set( BUILD_ANDROID True )
+set( __ANDROID_NDK__ True )
 
 # where is the target environment
 set( CMAKE_FIND_ROOT_PATH "${ANDROID_TOOLCHAIN_ROOT}/bin" "${ANDROID_TOOLCHAIN_ROOT}/${ANDROID_TOOLCHAIN_MACHINE_NAME}" "${ANDROID_SYSROOT}" "${CMAKE_INSTALL_PREFIX}" "${CMAKE_INSTALL_PREFIX}/share" )
