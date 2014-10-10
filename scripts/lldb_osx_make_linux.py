@@ -32,6 +32,11 @@ def parse_args():
     parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 
     parser.add_argument(
+        "--ccache",
+        action="store_true",
+        dest="use_ccache",
+        help="use ccache in the remote build")
+    parser.add_argument(
         "--configuration", "-c",
         help="specify configuration (Debug, Release)",
         default=normalize_configuration(os.environ.get('CONFIGURATION', 'Debug')))
@@ -135,8 +140,18 @@ def maybe_configure(args):
         "%s@%s" % (args.user, args.remote_address),
         "cd", args.remote_dir, "&&",
         "touch", "llvm/.git", "&&",
-        "lldb_configure.py", "-c", "-b", args.remote_build_dir
+        "lldb_configure.py",
+        "-a", # enable assertions
+        "-b", args.remote_build_dir, # use this build dir
+        "-c", # use cmake
+        "-g", # use gold linker
+        "-l", # use clang
+        "-n", # use ninja
+        "-s", # generate debug symbols
         ]
+
+    if args.use_ccache:
+        commandline.append("--ccache")
 
     if args.configuration == 'release':
         commandline.append('--release')
