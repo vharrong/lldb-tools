@@ -171,6 +171,13 @@ def GetToolNames(args):
     tool_names.cc = "ccache " + tool_names.cc
     tool_names.cxx = "ccache " + tool_names.cxx
 
+    # if using ccache with clang, add extra clang args to silence 'unused -I' warnings.
+    # args added to tool name instead of compiler flags because flags are ignored/overridden
+    # by some of lldb's cmake build script
+    if args.use_clang:
+      tool_names.cc = tool_names.cc + " -Qunused-arguments -fcolor-diagnostics"
+      tool_names.cxx = tool_names.cxx + " -Qunused-arguments -fcolor-diagnostics"
+
   return tool_names
 
 def GetCxxFlags(args):
