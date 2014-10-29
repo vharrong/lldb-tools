@@ -43,7 +43,7 @@ def ParseCommandLine():
       help="specify the target type, x86, android (default: x86)")
   parser.add_argument(
       "-arch", action="store", dest="arch",
-      help="specify the target arch type, x86, x86-android, armeabi")
+      help="specify the target arch type, x86, x86-android, x86-64-android, armeabi")
   parser.add_argument(
       "-toolchain", action="store", dest="toolchain",
       help="specify the standalone toolchain dir (fullpath) for Android build")
@@ -294,6 +294,10 @@ def main():
     	# convert to cmake script style string
     	# todo: 32bit x86
     	if args.arch == "x86-android":
+        	args.arch = "x86"
+        	llvm_target_arch = "X86"
+        	llvm_targets_to_build = "X86"
+    	elif args.arch == "x86-64-android":
         	args.arch = "x86_64"
         	llvm_target_arch = "X86"
         	llvm_targets_to_build = "X86"
@@ -316,7 +320,7 @@ def main():
                           "-DANDROID_STANDALONE_TOOLCHAIN=" + args.toolchain,
                           "-DPYTHON_EXECUTABLE=" + args.toolchain + "/bin/python",
                           "-DANDROID_TOOLCHAIN_NAME=standalone",                              
-                          "-DCMAKE_CXX_COMPILER_VERSION=4.8",                          
+                          "-DCMAKE_CXX_COMPILER_VERSION=4.9",                          
                           "-DANDROID_ABI=" + args.arch,                          
                           "-DANDROID_STL=none",
                           "-DCMAKE_INSTALL_PREFIX:PATH=" + install_dir,
