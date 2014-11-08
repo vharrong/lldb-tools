@@ -1247,7 +1247,7 @@ set( CMAKE_ASM_SOURCE_FILE_EXTENSIONS s S asm )
 # flags and definitions
 remove_definitions( -DANDROID -D__ANDROID__ )
 #add_definitions( -DANDROID -D__ANDROID__ )
-add_definitions( -DANDROID -D__ANDROID_NDK__ )
+add_definitions( -DANDROID -D__ANDROID_NDK__ -DLLDB_DISABLE_LIBEDIT )
 
 if( ANDROID_SYSROOT MATCHES "[ ;\"]" )
  if( CMAKE_HOST_WIN32 )
