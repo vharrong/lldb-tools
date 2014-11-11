@@ -1,22 +1,18 @@
-1. Download 32 and 64 bit target NDKs from https://developer.android.com/tools/sdk/ndk/index.html (r10b is minimum version for x86_64)
+1. Download 64 bit target NDKs from https://developer.android.com/tools/sdk/ndk/index.html (r10b is minimum version for x86_64)
 
-2. Extract the archives. (I put them in two different directories, even though, theoretically, they should work from one.)
+2. Follow the instructions to install the NDK.
 
 3. Create standalone NDK toolchains.
-   For 32bit, cd to android-ndk-r10b do:
-   ./build/tools/make-standalone-toolchain.sh --toolchain=arm-linux-androideabi-4.8 --install-dir=/home/achien/SDK/ndk-arm-4.8
-   For 64bit, cd to android-ndk-r10b-64 do:
-   ./build/tools/make-standalone-toolchain.sh --toolchain=x86_64-4.9 --platform=android-L --install-dir=/home/achien/SDK/ndk-x86_64-4.9
+   For 64bit, cd to android-ndk-r10b-64 do: (install-dir should be full path)
+   ./build/tools/make-standalone-toolchain.sh --toolchain=x86_64-4.9 --install-dir=/home/achien/SDK/ndk-x86_64-4.9
 
 4. Update LLVM source as needed, apply android patch to LLVM source tree.
-   The patch (at the time of writing) is generated from the commit: SHA ea64dce2 by Chad Rosier, 09/29/2014 06:59 AM
-   cd llvm
    patch -p1 < ../lldb-tools/android/llvm-android.patch
 
 5. Run lldb_configure.py for the HOST machine and build.
    Note: remember to build HOST llvm whenever llvm is updated.
 
-6. Run lldb_configure.py for the Android platform (x86_64 or armeabi)
+6. Run lldb_configure.py for the Android platform or use the lldb-tools/android/android-x86_64.sh script
    A couple important notes:
    1) Cmake + Ninja is the only build configuration supported currently.
    2) HOST machine build must be complete and the build/bin directory is used for lldb_configure's --tblgen_dir (llvm-tblgen and clang-tblgen binaries are used during the build)
@@ -24,9 +20,6 @@
    4) specify target arch using -arch armeabi or x86-android
    
    Examples -
-   For armeabi:
-   ./lldb-tools/scripts/lldb_configure.py -c -n -target android -arch armeabi -toolchain /home/achien/SDK/ndk-arm-4.8 -tblgen_dir /home/achien/Projects/build_gcc/bin -b arm-android-4.8
-   For x86_64:
-   ./lldb-tools/scripts/lldb_configure.py -c -n -target android -arch x86-android -toolchain /home/achien/SDK/ndk-x86_64-4.9 -tblgen_dir /home/achien/Projects/build_gcc/bin -b x86_64-android-4.9
+   ./lldb-tools/scripts/lldb_configure.py -c -n -target android -arch x86-64-android -toolchain /home/achien/SDK/ndk-x86_64-4.9 -tblgen_dir /home/achien/Projects/build_gcc/bin -b x86_64-android-4.9
    
    
