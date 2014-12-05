@@ -1,12 +1,13 @@
 diff --git a/include/llvm/Target/TargetLibraryInfo.h b/include/llvm/Target/TargetLibraryInfo.h
-index 389fd25..8388e5c 100644
+index 56a8919..3bd3833 100644
 --- a/include/llvm/Target/TargetLibraryInfo.h
 +++ b/include/llvm/Target/TargetLibraryInfo.h
-@@ -13,6 +13,12 @@
+@@ -13,6 +13,13 @@
  #include "llvm/ADT/DenseMap.h"
  #include "llvm/Pass.h"
  
 +#if defined(__ANDROID_NDK__)
++// some versions of Android NDK have these macros defined
 +#undef stat64
 +#undef lstat64
 +#undef fstat64
@@ -16,7 +17,7 @@ index 389fd25..8388e5c 100644
    class Triple;
  
 diff --git a/include/llvm/Transforms/Instrumentation.h b/include/llvm/Transforms/Instrumentation.h
-index c6a339b..cd1643a 100644
+index 87422df..39818bf 100644
 --- a/include/llvm/Transforms/Instrumentation.h
 +++ b/include/llvm/Transforms/Instrumentation.h
 @@ -16,7 +16,7 @@
@@ -28,9 +29,9 @@ index c6a339b..cd1643a 100644
  inline void *getDFSanArgTLSPtrForJIT() {
    extern __thread __attribute__((tls_model("initial-exec")))
      void *__dfsan_arg_tls;
-@@ -78,7 +78,7 @@ ModulePass *createDataFlowSanitizerPass(StringRef ABIListFile = StringRef(),
-                                         void *(*getArgTLS)() = nullptr,
-                                         void *(*getRetValTLS)() = nullptr);
+@@ -81,7 +81,7 @@ ModulePass *createDataFlowSanitizerPass(StringRef ABIListFile = StringRef(),
+ // Insert SanitizerCoverage instrumentation.
+ ModulePass *createSanitizerCoverageModulePass(int CoverageLevel);
  
 -#if defined(__GNUC__) && defined(__linux__) && !defined(ANDROID)
 +#if defined(__GNUC__) && defined(__linux__) && !defined(ANDROID) && !defined(__ANDROID_NDK__)
@@ -76,43 +77,6 @@ index c9d89a8..2fa7c76 100644
    // The declaration of "cacheflush" in Android bionic:
    // extern int cacheflush(long start, long end, long flags);
    const char *End = Start + Len;
-diff --git a/lib/Support/Unix/RWMutex.inc b/lib/Support/Unix/RWMutex.inc
-index edcbd52..85a1043 100644
---- a/lib/Support/Unix/RWMutex.inc
-+++ b/lib/Support/Unix/RWMutex.inc
-@@ -26,26 +26,26 @@ using namespace sys;
- // will therefore deadlock if a thread tries to acquire a read lock
- // multiple times.
- 
--RWMutexImpl::RWMutexImpl() : data_(new Mutex(false)) { }
-+RWMutexImpl::RWMutexImpl() : data_(new MutexImpl(false)) { }
- 
- RWMutexImpl::~RWMutexImpl() {
--  delete static_cast<Mutex *>(data_);
-+  delete static_cast<MutexImpl *>(data_);
- }
- 
- bool RWMutexImpl::reader_acquire() {
--  return static_cast<Mutex *>(data_)->acquire();
-+  return static_cast<MutexImpl *>(data_)->acquire();
- }
- 
- bool RWMutexImpl::reader_release() {
--  return static_cast<Mutex *>(data_)->release();
-+  return static_cast<MutexImpl *>(data_)->release();
- }
- 
- bool RWMutexImpl::writer_acquire() {
--  return static_cast<Mutex *>(data_)->acquire();
-+  return static_cast<MutexImpl *>(data_)->acquire();
- }
- 
- bool RWMutexImpl::writer_release() {
--  return static_cast<Mutex *>(data_)->release();
-+  return static_cast<MutexImpl *>(data_)->release();
- }
- 
- }
 diff --git a/lib/Transforms/Hello/CMakeLists.txt b/lib/Transforms/Hello/CMakeLists.txt
 index 3851b35..b74fb89 100644
 --- a/lib/Transforms/Hello/CMakeLists.txt
@@ -140,7 +104,7 @@ index de68bb5..4b3d7df 100644
  endif()
  
 diff --git a/utils/unittest/googletest/include/gtest/internal/gtest-port.h b/utils/unittest/googletest/include/gtest/internal/gtest-port.h
-index f5bfd4e..65197a3 100644
+index f5bfd4e..617ec0e 100644
 --- a/utils/unittest/googletest/include/gtest/internal/gtest-port.h
 +++ b/utils/unittest/googletest/include/gtest/internal/gtest-port.h
 @@ -233,7 +233,7 @@
@@ -157,7 +121,7 @@ index f5bfd4e..65197a3 100644
  // Defines this to true iff Google Test can use POSIX regular expressions.
  #ifndef GTEST_HAS_POSIX_RE
 -# define GTEST_HAS_POSIX_RE (!GTEST_OS_WINDOWS)
-+# define GTEST_HAS_POSIX_RE (!GTEST_OS_WINDOWS && !GTEST_OS_LINUX_ANDROID)
++# define GTEST_HAS_POSIX_RE (!GTEST_OS_WINDOWS && !defined(__ANDROID_NDK__))
  #endif
  
  #if GTEST_HAS_POSIX_RE
@@ -166,7 +130,7 @@ index f5bfd4e..65197a3 100644
  // The user didn't tell us, so we need to figure it out.
  
 -# if GTEST_OS_LINUX && !defined(__ia64__)
-+# if GTEST_OS_LINUX && !defined(__ia64__) && !(GTEST_OS_LINUX_ANDROID)
++# if GTEST_OS_LINUX && !defined(__ia64__) && !defined(__ANDROID_NDK__)
  #  define GTEST_HAS_CLONE 1
  # else
  #  define GTEST_HAS_CLONE 0
