@@ -4,10 +4,11 @@
 # remove exports?
 # build outside of source directories
 
-if [ ! -f $HOME/.ssh/id_rsa.pub ]; then
-  echo "Please run this command first:"
-  echo "yes '' | ssh-keygen -t rsa"
-fi
+# passwordless ssh setup is disabled because I can't get host->guest connections working
+#if [ ! -f $HOME/.ssh/id_rsa.pub ]; then
+#  echo "Please run this command first:"
+#  echo "yes '' | ssh-keygen -t rsa"
+#fi
 
 # configuration
 export ARCH=arm
@@ -82,9 +83,9 @@ function build_sysroot {
   sudo chroot tmp useradd $USER_LOGIN -m -s /bin/bash
 
   # enable passwordless ssh to this guest
-  sudo mkdir tmp/home/$USER_LOGIN/.ssh
-  sudo cp $HOME/.ssh/id_rsa.pub tmp/home/$USER_LOGIN/.ssh/
-  sudo chroot tmp chown -R $USER_LOGIN:$USER_LOGIN /home/$USER_LOGIN/.ssh/
+  # sudo mkdir tmp/home/$USER_LOGIN/.ssh
+  # sudo sed s/$USER@`hostname`/linaro@127.0.0.1/ $HOME/.ssh/id_rsa.pub > tmp/home/$USER_LOGIN/.ssh/authorized_keys
+  # sudo chroot tmp chown -R $USER_LOGIN:$USER_LOGIN /home/$USER_LOGIN/.ssh/
 
   # set passwords
   echo root:$PASSWORD | sudo chroot tmp chpasswd
